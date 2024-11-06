@@ -1,4 +1,4 @@
-from L3.services.leaderboard_service import LeaderboardService
+from services.leaderboard_service import LeaderboardService
 
 
 def display_menu():

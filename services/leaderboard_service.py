@@ -1,5 +1,5 @@
-from L3.api.riot_api import RiotAPI
-from L3.models.player import Player
+from api.riot_api import RiotAPI
+from models.player import Player
 
 class LeaderboardService:
     def __init__(self):

@@ -3,7 +3,7 @@ import os
 import requests
 from dotenv import load_dotenv
 
-from L3.api.exceptions import RiotAPIError
+from api.exceptions import RiotAPIError
 
 load_dotenv()
 
