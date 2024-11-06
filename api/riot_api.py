@@ -12,11 +12,17 @@ class RiotAPI:
         self.api_key = os.getenv("RIOT_API_KEY")
         self.riot_base_url = os.getenv("RIOT_BASE_URL")
 
-    def _make_request(self, endpoint):
+    def _make_request(self, endpoint, params=None):
         """Helper method to make a GET request to Riot API."""
-        url = f"{self.riot_base_url}{endpoint}?api_key={self.api_key}"
+
+        if params is None:
+            params = {}
+
+        params["api_key"] = self.api_key
+
+        url = f"{self.riot_base_url}{endpoint}"
         try:
-            response = requests.get(url)
+            response = requests.get(url, params=params)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as err:
@@ -26,12 +32,15 @@ class RiotAPI:
 
     def get_account_by_riot_id(self, game_name, tag_line):
         endpoint = f"/riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}"
-        return self._make_request(endpoint)
-
-    def get_list_of_match_ids_by_puuid(self, puuid, start_time):
-        endpoint = f"/lol/match/v5/matches/by-puuid/{puuid}/ids?startTime={start_time}"
 
         return self._make_request(endpoint)
+
+    def get_list_of_match_ids_by_puuid(self, puuid, start_time=None, count=None):
+        endpoint = f"/lol/match/v5/matches/by-puuid/{puuid}/ids"
+
+        params = {"start": start_time, "count": count}
+
+        return self._make_request(endpoint, params)
 
     def get_match_by_match_id(self, match_id):
         endpoint = f"/lol/match/v5/matches/{match_id}"
