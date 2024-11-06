@@ -28,8 +28,9 @@ def main():
         elif choice == '3':
             print(leaderboard_service.get_leaderboard_players())
             try:
-                player_index = int(input("Enter the number of the player to remove: ")) - 1
-                print(leaderboard_service.remove_player(player_index))
+                game_name = input("Enter the player's game name: ").strip()
+                tag_line = input("Enter the player's tag line: ").strip()
+                print(leaderboard_service.remove_player(game_name, tag_line))
             except ValueError:
                 print("Invalid input. Please enter a number.")
 
