@@ -18,7 +18,8 @@ class LeaderboardService:
 
     def add_player(self, game_name, tag_line):
         """Add a player to the leaderboard."""
-        player = Player(game_name=game_name, tag_line=tag_line)
+        puuid = self.riot_api.get_account_by_riot_id(game_name, tag_line).get("puuid")
+        player = Player(game_name=game_name, tag_line=tag_line, puuid=puuid)
         self.leaderboard.append(player)
         return f"Player {game_name}#{tag_line} added to leaderboard."
 
@@ -34,9 +35,7 @@ class LeaderboardService:
         """Update the leaderboard. Display results to terminal. (for the time being)"""
         print("\nUpdating leaderboard...")
         for player in self.leaderboard:
-            puuid = self.riot_api.get_account_by_riot_id(player.game_name, player.tag_line).get("puuid")
-
-            match_ids = self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time, count)
+            match_ids = self.riot_api.get_list_of_match_ids_by_puuid(player.puuid, start_time, count)
 
             num_matches = len(match_ids)
             total_damage = 0
@@ -45,5 +44,5 @@ class LeaderboardService:
                 match = self.riot_api.get_match_by_match_id(match_id)
                 total_damage += int(match.get("info").get("participants")[0].get("totalDamageDealt"))
 
-            print("Average Damage in past", num_matches, "games: ", total_damage/ num_matches)
+            print(player.game_name, "#", player.tag_line, "'s average Damage in the past", num_matches, "games: ", total_damage/ num_matches)
 
