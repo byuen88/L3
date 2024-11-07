@@ -8,6 +8,7 @@ load_dotenv()
 
 class BucketService:
     def __init__(self):
+        # TODO: remove aws_access_key_id, aws_secret_access_key, and aws_session_token when code is moved to EC2
         self.aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
         self.aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
         self.aws_session_token = os.getenv("AWS_SESSION_TOKEN")
@@ -24,9 +25,11 @@ class BucketService:
             object_name = os.path.basename(file_name)
         # Upload the file
         s3_client = boto3.client('s3', aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, aws_session_token=self.aws_session_token)
+        # replace line 27 with the line below when moved to EC2
+        # s3_client = boto3.client('s3')
         try:
-            response = s3_client.upload_file(file_name, self.bucket_name, object_name)
-            print(f"Sucessfully uploaded {file_name} to bucket")
+            s3_client.upload_file(file_name, self.bucket_name, object_name)
+            print(f"Sucessfully uploaded file to S3 bucket")
         except ClientError as e:
             logging.error(e)
             return False

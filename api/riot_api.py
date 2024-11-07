@@ -38,7 +38,7 @@ class RiotAPI:
     def get_list_of_match_ids_by_puuid(self, puuid, start_time=None, count=None):
         endpoint = f"/lol/match/v5/matches/by-puuid/{puuid}/ids"
 
-        params = {"start": start_time, "count": count}
+        params = {"startTime": start_time, "count": count}
 
         return self._make_request(endpoint, params)
 
