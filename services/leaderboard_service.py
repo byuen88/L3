@@ -1,5 +1,6 @@
 from api.riot_api import RiotAPI
 from models.player import Player
+from services.bucket_services import BucketService
 import json
 import pickle
 import time
@@ -92,8 +93,13 @@ class LeaderboardService:
                 if match_id not in self.combined:
                     self.combined[match_id] = match
 
-        with open("combined.json", "w") as f:
-            json.dump(self.combined,f)
+        if self.combined:
+            with open("combined.json", "w") as f:
+                json.dump(self.combined,f)
+
+            bucket = BucketService()
+            bucket.upload_file('combined.json', 'combined.json')
+        else:
+            print("\nYou already have the most updated games")
 
         self.update()
-
