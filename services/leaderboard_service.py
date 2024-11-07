@@ -20,10 +20,13 @@ class LeaderboardService:
         """Add a player to the leaderboard."""
         player = Player(game_name=game_name, tag_line=tag_line)
         self.leaderboard.append(player)
+        
+        # TODO: Add to Dynamo DB
         return f"Player {game_name}#{tag_line} added to leaderboard."
 
     def remove_player(self, game_name, tag_line):
         """Remove a player from the leaderboard."""
+        # TODO: Remove from Dynamo DB
         for player in self.leaderboard:
             if player.game_name == game_name and player.tag_line == tag_line:
                 self.leaderboard.remove(player)
@@ -33,9 +36,9 @@ class LeaderboardService:
     def update_leaderboard(self, start_time, count):
         """Update the leaderboard. Display results to terminal. (for the time being)"""
         print("\nUpdating leaderboard...")
+        # TODO: Update Dynamo DB data
         for player in self.leaderboard:
             puuid = self.riot_api.get_account_by_riot_id(player.game_name, player.tag_line).get("puuid")
-
             match_ids = self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time, count)
 
             num_matches = len(match_ids)
