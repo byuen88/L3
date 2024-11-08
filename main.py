@@ -7,7 +7,8 @@ def display_menu():
     print("2. Add Player")
     print("3. Remove Player")
     print("4. Update Leaderboard")
-    print("5. Exit")
+    print("5. Combine")
+    print("6. Exit")
 
 def main():
     leaderboard_service = LeaderboardService()
@@ -40,6 +41,9 @@ def main():
             leaderboard_service.update_leaderboard(start_time, count)
 
         elif choice == '5':
+            leaderboard_service.combine_matches()
+
+        elif choice == '6':
             print("Exiting Leaderboard Manager.")
             break
 
