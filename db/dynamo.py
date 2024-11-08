@@ -1,6 +1,7 @@
 import boto3
 from botocore.exceptions import ClientError
 from models.player import Player
+from decimal import Decimal
 
 class DynamoClient:
     def __init__(self, table_name='players'):
@@ -13,7 +14,8 @@ class DynamoClient:
             self.table.put_item(
                 Item={
                     'game_name': player.game_name,
-                    'tag_line': player.tag_line
+                    'tag_line': player.tag_line,
+                    'puuid': player.puuid
                 }
             )
             print(f"Player {player.game_name}#{player.tag_line} added to DynamoDB.")
@@ -41,12 +43,27 @@ class DynamoClient:
             players = []
             
             for item in items:
-                game_name = item.get('game_name')
-                tag_line = item.get('tag_line')
-                player = Player(game_name=game_name, tag_line=tag_line)
+                player = Player(**item)
                 players.append(player)
-            
+                
             return players
+        except ClientError as e:
+            print(e.response['Error']['Message'])
+            return []
+        
+    def update_player_damage(self, game_name, tag_line, avg_damage):
+        """Update a player's information in DB."""
+        try:
+            self.table.update_item(
+                Key={
+                    'game_name': game_name,
+                    'tag_line': tag_line
+                },
+                UpdateExpression='SET avg_damage = :val1',
+                ExpressionAttributeValues={
+                    ':val1': Decimal(str(avg_damage))
+                }
+            )
         except ClientError as e:
             print(e.response['Error']['Message'])
             return []

@@ -20,8 +20,9 @@ class LeaderboardService:
 
     def add_player(self, game_name, tag_line):
         """Add a player to the leaderboard."""
+        puuid = self.riot_api.get_account_by_riot_id(game_name, tag_line).get("puuid")
         tag_line = tag_line.upper()
-        player = Player(game_name=game_name, tag_line=tag_line)
+        player = Player(game_name=game_name, tag_line=tag_line, puuid=puuid)
         
         # Add to cache
         self.leaderboard.append(player)
@@ -42,10 +43,11 @@ class LeaderboardService:
         for player in self.leaderboard:
             if player.game_name == game_name and player.tag_line == tag_line:
                 self.leaderboard.remove(player)
-                return f"Player {game_name}#{tag_line} removed from leaderboard."
-        return f"No player found with name {game_name}#{tag_line}."
+                return f"Player {game_name}#{tag_line} removed from leaderboard DB."
+            else:
+                return f"No player found with name {game_name}#{tag_line} in DB."
 
-    def update_damage(self, match_ids):
+    def update_damage(self, match_ids, player: Player):
         """Update total damage dealth over X matches."""
         num_matches = len(match_ids)
         total_damage = 0
@@ -53,16 +55,19 @@ class LeaderboardService:
         for match_id in match_ids:
             match = self.riot_api.get_match_by_match_id(match_id)
             total_damage += int(match.get("info").get("participants")[0].get("totalDamageDealt"))
+        
+        avg_damage = total_damage / num_matches
+        
+        self.db.update_player_damage(player.game_name, player.tag_line, avg_damage)
 
-        print("Average Damage in past", num_matches, "games: ", total_damage/ num_matches)
+        print("Average Damage in past", num_matches, "games: ", avg_damage)
         
     def update_leaderboard(self, start_time, count):
         """Update the leaderboard. Display results to terminal. (for the time being)"""
         print("\nUpdating leaderboard...")
-        # TODO: Update Dynamo DB data
+    
         for player in self.leaderboard:
-            puuid = self.riot_api.get_account_by_riot_id(player.game_name, player.tag_line).get("puuid")
-            match_ids = self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time, count)
+            match_ids = self.riot_api.get_list_of_match_ids_by_puuid(player.puuid, start_time, count)
 
-            self.update_damage(match_ids)
+            self.update_damage(match_ids, player)
 
