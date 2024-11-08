@@ -5,7 +5,7 @@ from decimal import Decimal
 
 class DynamoClient:
     def __init__(self, table_name='players'):
-        self.dynamodb = boto3.resource('dynamodb')
+        self.dynamodb = boto3.resource('dynamodb', region_name="ca-central-1")
         self.table = self.dynamodb.Table(table_name)
         
     def add_player(self, player: Player):
