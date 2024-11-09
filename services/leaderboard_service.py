@@ -72,7 +72,7 @@ class LeaderboardService:
         
         avg_damage = total_damage / num_matches
         
-        self.db.update_player_damage(player.game_name, player.tag_line, avg_damage)
+        # self.db.update_player_damage(player.game_name, player.tag_line, avg_damage)
 
         print("Average Damage in past", num_matches, "games: ", avg_damage)
         
