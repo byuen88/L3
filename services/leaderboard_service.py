@@ -5,12 +5,14 @@ from db.dynamo import DynamoClient
 import json
 import pickle
 import time
+import os
 
 class LeaderboardService:
     def __init__(self):
         self.riot_api = RiotAPI()
         self.db = DynamoClient()
         self.leaderboard = self.db.get_all_players()
+        self.ec2_volume = "/app/data/"
         self.combined_json = "combined.json"
         self.latest_update_time = "last_update_time"
         self.player_add_delete = False
@@ -93,15 +95,27 @@ class LeaderboardService:
             puuids.append(puuid)
         return puuids
 
+    def get_file_path(self, filename):
+        """get the file_path depending if the application is ran locally or inside Docker"""
+        if os.path.exists(self.ec2_volume):
+            # Inside Docker, use the mounted directory path
+            base_path = self.ec2_volume
+        else:
+            # Running locally, use current directory
+            base_path = "."
+        return os.path.join(base_path, filename) 
+
     def save_last_update_time(self):
         """save the current epoch time as the last update time"""
-        with open(self.latest_update_time, 'wb') as f:
+        latest_update_time = self.get_file_path(self.latest_update_time)
+        with open(latest_update_time, 'wb') as f:
             pickle.dump(int(time.time()), f)
 
     def get_last_update_time(self):
         """get the last updated epoch time"""
         try:
-            with open(self.latest_update_time,'rb') as f:
+            latest_update_time = self.get_file_path(self.latest_update_time)
+            with open(latest_update_time,'rb') as f:
                 last_update_time=pickle.load(f)
         except:
             last_update_time = ""
@@ -130,10 +144,11 @@ class LeaderboardService:
                 if match_id not in combined:
                     combined[match_id] = match
         if combined:
-            with open(self.combined_json, "w") as f:
+            combined_json = self.get_file_path(self.combined_json)
+            with open(combined_json, "w") as f:
                 json.dump(combined,f)
             # upload json to S3
-            BucketService().upload_file(self.combined_json, self.combined_json)
+            BucketService().upload_file(combined_json, self.combined_json)
         else:
             print("\nAll games are up-to-date.")
 

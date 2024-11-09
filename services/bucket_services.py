@@ -25,7 +25,7 @@ class BucketService:
             object_name = os.path.basename(file_name)
         # Upload the file
         s3_client = boto3.client('s3', aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, aws_session_token=self.aws_session_token)
-        # replace line 27 with the line below when moved to EC2
+        # TODO: replace above line with the line below when moved to EC2
         # s3_client = boto3.client('s3')
         try:
             s3_client.upload_file(file_name, self.bucket_name, object_name)
