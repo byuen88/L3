@@ -12,7 +12,8 @@ class LeaderboardService:
         self.db = DynamoClient()
         self.leaderboard = self.db.get_all_players()
         self.combined_json = "combined.json"
-        self.latest_update_time = "start_time"
+        self.latest_update_time = "last_update_time"
+        self.player_add_delete = False
 
     def get_leaderboard_players(self):
         """Query the database for all players in the leaderboard."""
@@ -26,16 +27,22 @@ class LeaderboardService:
 
     def add_player(self, game_name, tag_line):
         """Add a player to the leaderboard."""
-        puuid = self.riot_api.get_account_by_riot_id(game_name, tag_line).get("puuid")
         tag_line = tag_line.upper()
+
+        # check for duplicate player
+        for player in self.leaderboard:
+            if player.game_name == game_name and player.tag_line == tag_line:
+                return f"Player {game_name}#{tag_line} is already on the leaderboard."
+
+        puuid = self.riot_api.get_account_by_riot_id(game_name, tag_line).get("puuid")
         player = Player(game_name=game_name, tag_line=tag_line, puuid=puuid)
-        
+
         # Add to cache
         self.leaderboard.append(player)
         
         # Add to DB
         self.db.add_player(player)
-        
+        self.player_add_delete = True
         return f"Player {game_name}#{tag_line} added to leaderboard."
 
     def remove_player(self, game_name, tag_line):
@@ -50,8 +57,9 @@ class LeaderboardService:
             if player.game_name == game_name and player.tag_line == tag_line:
                 self.leaderboard.remove(player)
                 return f"Player {game_name}#{tag_line} removed from leaderboard DB."
-            else:
-                return f"No player found with name {game_name}#{tag_line} in DB."
+            
+        self.player_add_delete = True
+        return f"No player found with name {game_name}#{tag_line} in DB."
 
     def update_damage(self, match_ids, player: Player):
         """Update total damage dealth over X matches."""
@@ -85,25 +93,34 @@ class LeaderboardService:
             puuids.append(puuid)
         return puuids
 
-    def update(self):
-        """update to the current epoch time"""
+    def save_last_update_time(self):
+        """save the current epoch time as the last update time"""
         with open(self.latest_update_time, 'wb') as f:
             pickle.dump(int(time.time()), f)
+
+    def get_last_update_time(self):
+        """get the last updated epoch time"""
+        try:
+            with open(self.latest_update_time,'rb') as f:
+                last_update_time=pickle.load(f)
+        except:
+            last_update_time = ""
+        return last_update_time
 
     def combine_matches(self):
         """get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket"""
         combined = {}
-
-        try:
-            with open(self.latest_update_time,'rb') as f:
-                start_time=pickle.load(f)
-        except:
-            start_time = ""
+        # check if there are any additions or deletions of player
+        if self.player_add_delete:
+            last_update_time = ""
+            self.player_add_delete = False
+        else:
+            last_update_time = self.get_last_update_time()
 
         puuids = self.get_puuids_in_leaderboard()
         for puuid in puuids:
             # get matches since the last update
-            match_ids = self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time, 3)              # TODO: count=3 for now to save space
+            match_ids = self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time, count=3)      # TODO: count=3 for now to save space
             for match_id in match_ids:
                 match = self.riot_api.get_match_by_match_id(match_id)
                 # shorten the json to only relevant participants info
@@ -120,6 +137,4 @@ class LeaderboardService:
         else:
             print("\nAll games are up-to-date.")
 
-        self.update()
-        with open(self.latest_update_time,'rb') as f:
-            start_time=pickle.load(f)
+        self.save_last_update_time()
