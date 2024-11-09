@@ -41,7 +41,7 @@ async def main():
             await leaderboard_service.update_leaderboard(start_time, count)
 
         elif choice == '5':
-            leaderboard_service.combine_matches()
+            await leaderboard_service.combine_matches()
 
         elif choice == '6':
             print("Exiting Leaderboard Manager.")

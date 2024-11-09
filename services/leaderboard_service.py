@@ -31,13 +31,11 @@ class LeaderboardService:
             leaderboard_str += f"{idx}. {player.game_name}#{player.tag_line}\n"
         return leaderboard_str
 
-    # todo: don't send request to riot. Get from db
-    async def get_puuids_in_leaderboard(self):
+    def get_puuids_in_leaderboard(self):
         """return a list of puuids in the leaderboard"""
         puuids = []
         for player in self.leaderboard:
-            puuid = await self.riot_api.get_account_by_riot_id(player.game_name, player.tag_line).get("puuid")
-            puuids.append(puuid)
+            puuids.append(player.puuid)
         return puuids
 
     async def add_player(self, game_name, tag_line):
@@ -145,7 +143,7 @@ class LeaderboardService:
             last_update_time = ""
         return last_update_time
 
-    def combine_matches(self):
+    async def combine_matches(self):
         """get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket"""
         combined = {}
         # check if there are any additions or deletions of player
@@ -158,9 +156,9 @@ class LeaderboardService:
         puuids = self.get_puuids_in_leaderboard()
         for puuid in puuids:
             # get matches since the last update
-            match_ids = self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time, count=3)      # TODO: count=3 for now to save space
+            match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time, count=3)      # TODO: count=3 for now to save space
             for match_id in match_ids:
-                match = self.riot_api.get_match_by_match_id(match_id)
+                match = await self.riot_api.get_match_by_match_id(match_id)
                 # shorten the json to only relevant participants info
                 match["info"]["participants"] = [
                     participant for participant in match["info"]["participants"] if participant["puuid"] in puuids

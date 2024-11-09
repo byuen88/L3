@@ -12,25 +12,38 @@ class RiotAPI:
     def __init__(self):
         self.api_key = os.getenv("RIOT_API_KEY")
         self.riot_base_url = os.getenv("RIOT_BASE_URL")
-        self.request_times = deque()
+        # self.request_times = deque()
+        self.request_times_2min = deque()  # Track requests for 2-minute window
+        self.request_times_1sec = deque()  # Track requests for 1-second window
 
     async def _rate_limit(self):
         """Enforce Riot API's rate limits."""
         now = time.time()
 
-        # Clear requests outside the 2-minute window
-        while self.request_times and now - self.request_times[0] > 120:
-            self.request_times.popleft()
+        # Clear out requests outside the 2-minute window
+        while self.request_times_2min and now - self.request_times_2min[0] > 120:
+            self.request_times_2min.popleft()
 
-        # Check for 100 requests in the last 2 minutes
-        if len(self.request_times) >= 100:
-            # Wait until rate limit clears
-            wait_time = 120 - (now - self.request_times[0])
-            print(f"Rate limit reached: Waiting for {wait_time:.2f} seconds.")
+        # Clear out requests outside the 1-second window
+        while self.request_times_1sec and now - self.request_times_1sec[0] > 1:
+            self.request_times_1sec.popleft()
+
+        # Check for 99 requests in the last 2 minutes
+        if len(self.request_times_2min) >= 99:
+            wait_time = 120 - (now - self.request_times_2min[0])
+            print(f"2-minute rate limit reached: Waiting for {wait_time:.2f} seconds.")
+            await asyncio.sleep(wait_time)
+            self.last_long_wait_end = now + wait_time  # Update the end time of this long wait
+
+        # Check for 19 requests in the last 1 second
+        elif len(self.request_times_1sec) >= 19:
+            wait_time = 1 - (now - self.request_times_1sec[0])
+            print(f"1-second rate limit reached: Waiting for {wait_time:.2f} seconds.")
             await asyncio.sleep(wait_time)
 
-        # Track current request time
-        self.request_times.append(now)
+        # Track current request time in both windows
+        self.request_times_2min.append(time.time())
+        self.request_times_1sec.append(time.time())
 
 
     async def _make_request(self, endpoint, params=None):
