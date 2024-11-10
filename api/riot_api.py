@@ -33,7 +33,6 @@ class RiotAPI:
             wait_time = 120 - (now - self.request_times_2min[0])
             print(f"2-minute rate limit reached: Waiting for {wait_time:.2f} seconds.")
             await asyncio.sleep(wait_time)
-            self.last_long_wait_end = now + wait_time  # Update the end time of this long wait
 
         # Check for 19 requests in the last 1 second
         elif len(self.request_times_1sec) >= 19:

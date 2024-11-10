@@ -154,24 +154,29 @@ class LeaderboardService:
             last_update_time = self.get_last_update_time()
 
         puuids = self.get_puuids_in_leaderboard()
-        for puuid in puuids:
-            # get matches since the last update
-            match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time, count=3)      # TODO: count=3 for now to save space
-            for match_id in match_ids:
-                match = await self.riot_api.get_match_by_match_id(match_id)
-                # shorten the json to only relevant participants info
-                match["info"]["participants"] = [
-                    participant for participant in match["info"]["participants"] if participant["puuid"] in puuids
-                ]
-                if match_id not in combined:
-                    combined[match_id] = match
-        if combined:
-            combined_json = self.get_file_path(self.combined_json)
-            with open(combined_json, "w") as f:
-                json.dump(combined,f)
-            # upload json to S3
-            BucketService().upload_file(combined_json, self.combined_json)
-        else:
-            print("\nAll games are up-to-date.")
+        try:
+            for puuid in puuids:
+                # get matches since the last update
+                match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time,
+                                                                               count=3)  # TODO: count=3 for now to save space
+                for match_id in match_ids:
+                    match = await self.riot_api.get_match_by_match_id(match_id)
+                    # shorten the json to only relevant participants info
+                    match["info"]["participants"] = [
+                        participant for participant in match["info"]["participants"] if participant["puuid"] in puuids
+                    ]
+                    if match_id not in combined:
+                        combined[match_id] = match
+            if combined:
+                combined_json = self.get_file_path(self.combined_json)
+                with open(combined_json, "w") as f:
+                    json.dump(combined, f)
+                # upload json to S3
+                BucketService().upload_file(combined_json, self.combined_json)
+            else:
+                print("\nAll games are up-to-date.")
+        except:
+            print("\nAN error occurred")
+
 
         self.save_last_update_time()
