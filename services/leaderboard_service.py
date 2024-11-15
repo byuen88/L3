@@ -2,7 +2,6 @@ from api.riot_api import RiotAPI
 from models.player import Player
 from services.bucket_services import BucketService
 from db.dynamo import DynamoClient
-import time
 import asyncio
 import json
 import pickle

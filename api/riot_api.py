@@ -9,6 +9,8 @@ from api.exceptions import RiotAPIError
 load_dotenv()
 
 class RiotAPI:
+    max_rate_2mins = (120, 100)    # 100 requests every 2 mins
+    max_rate_1sec = (1, 20)        # 20 requests every 1 sec
     def __init__(self):
         self.api_key = os.getenv("RIOT_API_KEY")
         self.riot_base_url = os.getenv("RIOT_BASE_URL")
@@ -21,22 +23,22 @@ class RiotAPI:
         now = time.time()
 
         # Clear out requests outside the 2-minute window
-        while self.request_times_2min and now - self.request_times_2min[0] > 120:
+        while self.request_times_2min and now - self.request_times_2min[0] > RiotAPI.max_rate_2mins[0]:
             self.request_times_2min.popleft()
 
         # Clear out requests outside the 1-second window
-        while self.request_times_1sec and now - self.request_times_1sec[0] > 1:
+        while self.request_times_1sec and now - self.request_times_1sec[0] > RiotAPI.max_rate_1sec[0]:
             self.request_times_1sec.popleft()
 
         # Check for 99 requests in the last 2 minutes
-        if len(self.request_times_2min) >= 99:
-            wait_time = 120 - (now - self.request_times_2min[0])
+        if len(self.request_times_2min) >= RiotAPI.max_rate_2mins[1] - 1:
+            wait_time = RiotAPI.max_rate_2mins[0] - (now - self.request_times_2min[0])
             print(f"2-minute rate limit reached: Waiting for {wait_time:.2f} seconds.")
             await asyncio.sleep(wait_time)
 
         # Check for 19 requests in the last 1 second
-        elif len(self.request_times_1sec) >= 19:
-            wait_time = 1 - (now - self.request_times_1sec[0])
+        elif len(self.request_times_1sec) >= RiotAPI.max_rate_1sec[1] - 1:
+            wait_time = RiotAPI.max_rate_1sec[0] - (now - self.request_times_1sec[0])
             print(f"1-second rate limit reached: Waiting for {wait_time:.2f} seconds.")
             await asyncio.sleep(wait_time)
 
