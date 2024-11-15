@@ -5,19 +5,19 @@ from services.leaderboard_service import LeaderboardService
 # Initialize Flask application
 app = Flask(__name__)
 
+leaderboard_service = LeaderboardService()
+
 # Define route for receiving POST data from Lambda
-@app.route('/receive_data', methods=['POST'])
+@app.route('/games_processed', methods=['POST'])
 def receive_data():
     data = request.json  # Expecting JSON data from Lambda
     print("\nReceived data:", data)
-    # Optionally, update or process leaderboard with received data
-    # leaderboard_service.update_leaderboard()  # Modify this if needed for data processing
+    leaderboard_service.update_in_progress= False
     return "Data received", 200
 
 # Function to run the Flask server in a separate thread
 def run_server():
     app.run(host='0.0.0.0', port=5000)
-
 
 def display_menu():
     print("\n--- Leaderboard Manager ---")
@@ -29,7 +29,6 @@ def display_menu():
     print("6. Exit")
 
 def main():
-    leaderboard_service = LeaderboardService()
     # Start the Flask server in a background thread
     server_thread = Thread(target=run_server)
     server_thread.daemon = True

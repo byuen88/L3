@@ -16,6 +16,7 @@ class LeaderboardService:
         self.combined_json = "combined.json"
         self.latest_update_time = "last_update_time"
         self.player_add_delete = False
+        self.update_in_progress = False
 
     def get_leaderboard_players(self):
         """Query the database for all players in the leaderboard."""
@@ -149,6 +150,7 @@ class LeaderboardService:
                 json.dump(combined,f)
             # upload json to S3
             BucketService().upload_file(combined_json, self.combined_json)
+            self.update_in_progress = True
         else:
             print("\nAll games are up-to-date.")
 
