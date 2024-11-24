@@ -1,5 +1,6 @@
 import asyncio
 from services.leaderboard_service import LeaderboardService
+from db.db_constants import DynamoDBTables
 
 
 def display_menu():
@@ -8,42 +9,89 @@ def display_menu():
     print("2. Add Player")
     print("3. Remove Player")
     print("4. Update Leaderboard")
-    print("5. Combine")
-    print("6. Exit")
+    print("5. Exit")
+
+def get_input(prompt):
+    user_input = input(prompt).strip()
+    if user_input.lower() == 'q':
+        print("Operation canceled. Returning to main menu...")
+        return None  # Indicate that the user wants to quit
+    return user_input
 
 async def main():
     leaderboard_service = LeaderboardService()
 
     while True:
         display_menu()
-        choice = input("Choose an option: ").strip()
+        choice = get_input("Choose an option: ")
 
         if choice == '1':
-            print(leaderboard_service.get_leaderboard_players())
+            metrics = {
+                '1': 'Average Damage',
+                '2': 'KDA',
+            }
+
+            print("\nMetrics to sort by:")
+            for key, value in metrics.items():
+                print(f"{key}. {value}")
+
+            metric_choice = get_input("Enter the metric to sort on (1-2, or 'q' to cancel): ")
+            if metric_choice is None:
+                continue
+
+            metric = ""
+
+            if metric_choice not in metrics:
+                print("Invalid choice for metric. Please try again.")
+                continue
+            elif metric_choice == '1':
+                metric = DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS
+            elif metric_choice == '2':
+                metric = DynamoDBTables.StatsTable.KDA
+
+            try:
+                print("\n--- Leaderboard ---")
+                leaderboard_service.view_leaderboard(metric)
+            except Exception as e:
+                print(f"An error occurred while fetching the leaderboard: {e}")
 
         elif choice == '2':
-            game_name = input("Enter the player's game name: ").strip()
-            tag_line = input("Enter the player's tag line: ").strip()
-            print(await leaderboard_service.add_player(game_name, tag_line))
+            game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
+            if game_name is None:
+                continue
+
+            tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
+            if tag_line is None:
+                continue
+
+            try:
+                print(await leaderboard_service.add_player(game_name, tag_line))
+            except Exception as e:
+                print(f"An error occurred while adding the player: {e}")
 
         elif choice == '3':
             print(leaderboard_service.get_leaderboard_players())
+            game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
+            if game_name is None:
+                continue
+
+            tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
+            if tag_line is None:
+                continue
             try:
-                game_name = input("Enter the player's game name: ").strip()
-                tag_line = input("Enter the player's tag line: ").strip()
                 print(leaderboard_service.remove_player(game_name, tag_line))
             except ValueError:
                 print("Invalid input. Please enter a number.")
+            except Exception as e:
+                print(f"An error occurred while removing a player: {e}")
 
         elif choice == '4':
-            start_time = input("Enter start time: ").strip()
-            count = input("Enter number of matches: ").strip()
-            await leaderboard_service.update_leaderboard(start_time, count)
+            try:
+                await leaderboard_service.combine_matches()
+            except Exception as e:
+                print(f"An error occurred while updating the leaderboard: {e}")
 
         elif choice == '5':
-            await leaderboard_service.combine_matches()
-
-        elif choice == '6':
             print("Exiting Leaderboard Manager.")
             break
 

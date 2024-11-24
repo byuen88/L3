@@ -2,6 +2,7 @@ from api.riot_api import RiotAPI
 from models.player import Player
 from services.bucket_services import BucketService
 from db.dynamo import DynamoClient
+from db.db_query import get_all_player_stats_from_dynamodb
 import asyncio
 import json
 import pickle
@@ -20,29 +21,49 @@ class LeaderboardService:
         self.update_lock = asyncio.Lock()  # Lock for single-process control
         self.cooldown = 120  # Cooldown period in seconds
 
+    def view_leaderboard(self, metric):
+        """Query database for calculated statistics and display based on specified order"""
+
+        data = get_all_player_stats_from_dynamodb()
+
+        sorted_data = sorted(
+            [(item["puuid"], item[metric]) for item in data],
+            key=lambda x: x[1],  # Sort by the metric value
+            reverse=True
+        )
+
+        # Find the longest player name for consistent formatting
+        longest_name_length = max(
+            len(f"{self.leaderboard.get(item[0]).game_name}#{self.leaderboard.get(item[0]).tag_line}")
+            for item in sorted_data if self.leaderboard.get(item[0])
+        )
+
+        # Display leaderboard
+        for puuid, metric_value in sorted_data:
+            player = self.leaderboard.get(puuid)  # Use .get() to avoid KeyError
+
+            if player:  # Ensure player exists
+                name = f"{player.game_name}#{player.tag_line}"
+                print(f"Player: {name:<{longest_name_length}} | {metric.capitalize()}: {metric_value}")
+            else:
+                continue
+
     def get_leaderboard_players(self):
         """Query the database for all players in the leaderboard."""
         if not self.leaderboard:
             return "Leaderboard is currently empty."
 
         leaderboard_str = "Current Leaderboard:\n"
-        for idx, player in enumerate(self.leaderboard, start=1):
+        for idx, player in enumerate(self.leaderboard.values(), start=1):
             leaderboard_str += f"{idx}. {player.game_name}#{player.tag_line}\n"
         return leaderboard_str
-
-    def get_puuids_in_leaderboard(self):
-        """return a list of puuids in the leaderboard"""
-        puuids = []
-        for player in self.leaderboard:
-            puuids.append(player.puuid)
-        return puuids
 
     async def add_player(self, game_name, tag_line):
         """Add a player to the leaderboard."""
         tag_line = tag_line.upper()
 
         # check for duplicate player
-        for player in self.leaderboard:
+        for player in self.leaderboard.values():
             if player.game_name == game_name and player.tag_line == tag_line:
                 return f"Player {game_name}#{tag_line} is already on the leaderboard."
 
@@ -57,7 +78,7 @@ class LeaderboardService:
         player = Player(game_name=game_name, tag_line=tag_line, puuid=puuid)
 
         # Add to cache
-        self.leaderboard.append(player)
+        self.leaderboard[player.puuid] = player
 
         # Add to DB
         self.db.add_player(player)
@@ -73,9 +94,9 @@ class LeaderboardService:
         self.db.remove_player(game_name, tag_line)
         
         # Remove from cache
-        for player in self.leaderboard:
+        for player in self.leaderboard.values():
             if player.game_name == game_name and player.tag_line == tag_line:
-                self.leaderboard.remove(player)
+                self.leaderboard.remove(player.puuid)
                 return f"Player {game_name}#{tag_line} removed from leaderboard DB."
 
         self.player_add_delete = True
@@ -152,7 +173,7 @@ class LeaderboardService:
         else:
             last_update_time = self.get_last_update_time()
 
-        puuids = self.get_puuids_in_leaderboard()
+        puuids = list(self.leaderboard.keys())
         try:
             for puuid in puuids:
                 # get matches since the last update

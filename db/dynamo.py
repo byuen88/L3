@@ -34,23 +34,23 @@ class DynamoClient:
             print(f"Player {game_name}#{tag_line} removed from DynamoDB.")
         except ClientError as e:
             print(e.response['Error']['Message'])
-    
+
     def get_all_players(self):
-        """Get all players from DynamoDB."""
+        """Get all players from DynamoDB as a dictionary."""
         try:
             response = self.table.scan()
             items = response.get('Items', [])
-            players = []
-            
+            players = {}
+
             for item in items:
                 player = Player(**item)
-                players.append(player)
-                
+                players[player.puuid] = player  # Use `puuid` as the dictionary key
+
             return players
         except ClientError as e:
             print(e.response['Error']['Message'])
-            return []
-        
+            return {}
+
     def update_player_damage(self, game_name, tag_line, avg_damage):
         """Update a player's information in DB."""
         try:
