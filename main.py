@@ -39,19 +39,19 @@ async def main():
             if metric_choice is None:
                 continue
 
-            metric = ""
+            metric_to_sort = ""
 
             if metric_choice not in metrics:
                 print("Invalid choice for metric. Please try again.")
                 continue
             elif metric_choice == '1':
-                metric = DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS
+                metric_to_sort = DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS
             elif metric_choice == '2':
-                metric = DynamoDBTables.StatsTable.KDA
+                metric_to_sort = DynamoDBTables.StatsTable.KDA
 
             try:
                 print("\n--- Leaderboard ---")
-                leaderboard_service.view_leaderboard(metric)
+                leaderboard_service.view_leaderboard(metric_to_sort)
             except Exception as e:
                 print(f"An error occurred while fetching the leaderboard: {e}")
 

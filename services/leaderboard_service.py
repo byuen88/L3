@@ -3,6 +3,7 @@ from models.player import Player
 from services.bucket_services import BucketService
 from db.dynamo import DynamoClient
 from db.db_query import get_all_player_stats_from_dynamodb
+from db.db_constants import DynamoDBTables
 import asyncio
 import json
 import pickle
@@ -21,14 +22,27 @@ class LeaderboardService:
         self.update_lock = asyncio.Lock()  # Lock for single-process control
         self.cooldown = 120  # Cooldown period in seconds
 
-    def view_leaderboard(self, metric):
+    def view_leaderboard(self, metric_to_sort):
         """Query database for calculated statistics and display based on specified order"""
 
         data = get_all_player_stats_from_dynamodb()
 
+        sort_idx = -1
+
+        if (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS):
+            sort_idx = 1
+        elif(metric_to_sort == DynamoDBTables.StatsTable.KDA):
+            sort_idx = 2
+
+        if (sort_idx == -1):
+            print("Sorting on incorrect metric")
+            return
+
         sorted_data = sorted(
-            [(item["puuid"], item[metric]) for item in data],
-            key=lambda x: x[1],  # Sort by the metric value
+            [(item["puuid"],
+              item[DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS],
+              item[DynamoDBTables.StatsTable.KDA]) for item in data],
+            key=lambda x: x[sort_idx],  # Sort by the metric value
             reverse=True
         )
 
@@ -39,12 +53,13 @@ class LeaderboardService:
         )
 
         # Display leaderboard
-        for puuid, metric_value in sorted_data:
-            player = self.leaderboard.get(puuid)  # Use .get() to avoid KeyError
+        print("Player | Average Damage | KDA")
+        for puuid, average_damage, kda in sorted_data:
+            player = self.leaderboard.get(puuid)
 
             if player:  # Ensure player exists
                 name = f"{player.game_name}#{player.tag_line}"
-                print(f"Player: {name:<{longest_name_length}} | {metric.capitalize()}: {metric_value}")
+                print(f"Player: {name:<{longest_name_length}} | {round(average_damage, 2)} | {round(kda, 2)}")
             else:
                 continue
 
