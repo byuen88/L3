@@ -9,6 +9,7 @@ import json
 import pickle
 import time
 import os
+import traceback
 
 class LeaderboardService:
     def __init__(self):
@@ -32,20 +33,33 @@ class LeaderboardService:
             return
 
         sort_idx = -1
-
-        if (metric_to_sort == DynamoDBTables.StatsTable.TOTAL_AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS):
+        if (metric_to_sort == DynamoDBTables.StatsTable.KDA):
             sort_idx = 1
-        elif (metric_to_sort == DynamoDBTables.StatsTable.KDA):
+        elif (metric_to_sort == DynamoDBTables.StatsTable.CS_PER_MIN):
             sort_idx = 2
+        elif (metric_to_sort == DynamoDBTables.StatsTable.DAMAGE_RECORD):
+            sort_idx = 3
+        elif (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS):
+            sort_idx = 4
+        elif (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED):
+            sort_idx = 5   
+        elif (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD):
+            sort_idx = 6   
 
         if (sort_idx == -1):
             print("Sorting on incorrect metric")
             return
 
         sorted_data = sorted(
-            [(item["puuid"],
-              item[DynamoDBTables.StatsTable.TOTAL_AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS],
-              item[DynamoDBTables.StatsTable.KDA]) for item in data],
+            [(
+                item["puuid"],
+                item[DynamoDBTables.StatsTable.KDA],
+                item[DynamoDBTables.StatsTable.CS_PER_MIN],
+                item[DynamoDBTables.StatsTable.DAMAGE_RECORD],
+                item[DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS],
+                item[DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED],
+                item[DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD],
+              ) for item in data],
             key=lambda x: x[sort_idx],  # Sort by the metric value
             reverse=True
         )
@@ -58,22 +72,36 @@ class LeaderboardService:
 
         count = 1
         # Column widths for consistent formatting
-        damage_col_width = 15
-        kda_col_width = 5
+        long_width = 17
+        medium_width = 10
+        short_width = 5
 
         # Display leaderboard header
         print(
-            f"{'Player':<{longest_name_length + 3}} | {'Average Damage':<{damage_col_width}} | {'KDA':<{kda_col_width}}")
-        print("-" * (longest_name_length + 3 + damage_col_width + kda_col_width + 7))
+            f"{'Player':<{longest_name_length + 3}} | "
+            f"{'KDA':<{short_width}} | "
+            f"{'CS/min':<{medium_width}} | "
+            f"{'Damage Record':<{long_width}} | "
+            f"{'AVG Damage':<{medium_width}} | "
+            f"{'AVG Gold':<{medium_width}} | "
+            f"{'AVG Time Dead (s)':<{long_width}} | "
+        )
+        print("-" * (longest_name_length + 3 + short_width + medium_width + long_width + medium_width + medium_width + long_width + 20))
 
         # Display leaderboard rows
-        for puuid, average_damage, kda in sorted_data:
+        for puuid, kda, cs, damage_record, avg_dmg, avg_gold, avg_dead in sorted_data:
             player = self.leaderboard.get(puuid)
 
             if player:  # Ensure player exists
                 name = f"{player.game_name}#{player.tag_line}"
                 print(
-                    f"{count}) {name:<{longest_name_length}} | {round(average_damage, 0):<{damage_col_width}} | {round(kda, 2):<{kda_col_width}}"
+                    f"{count}) {name:<{longest_name_length}} | "
+                    f"{round(kda, 2):<{short_width}} | "
+                    f"{round(cs, 2):<{medium_width}} | "
+                    f"{round(damage_record, 0):<{long_width}} | "
+                    f"{round(avg_dmg, 0):<{medium_width}} | "
+                    f"{round(avg_gold, 0):<{medium_width}} | "
+                    f"{round(avg_dead, 0):<{long_width}} | "
                 )
                 count += 1
 
@@ -197,6 +225,7 @@ class LeaderboardService:
     async def combine_matches(self):
         """get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket"""
         combined = {}
+        
         # check if there are any additions or deletions of player
         if self.player_add_delete:
             last_update_time = ""
@@ -226,8 +255,9 @@ class LeaderboardService:
                 BucketService().upload_file(combined_json, self.combined_json)
             else:
                 print("\nAll games are up-to-date.")
-        except:
-            print("\nAN error occurred")
-
+        except Exception as e:
+            print(f"\nAn error occurred while processing matches: {e}")
+            traceback.print_exc()
 
         self.save_last_update_time()
+        

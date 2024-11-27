@@ -2,102 +2,113 @@ import asyncio
 from services.leaderboard_service import LeaderboardService
 from db.db_constants import DynamoDBTables
 
+# Menu Options Constants
+MENU_OPTIONS = {
+    "1": "View Leaderboard",
+    "2": "Add Player",
+    "3": "Remove Player",
+    "4": "Update Leaderboard",
+    "5": "Exit"
+}
 
-def display_menu():
+METRICS = {
+    '1': ("KDA", DynamoDBTables.StatsTable.KDA),
+    '2': ("CS per min", DynamoDBTables.StatsTable.CS_PER_MIN),
+    '3': ("Damage Record", DynamoDBTables.StatsTable.DAMAGE_RECORD),
+    '4': ("Average Damage", DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS),
+    '5': ("Average Gold Earned", DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED),
+    '6': ("Average Time Spent Dead", DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD)
+}
+
+def display_menu() -> None:
     print("\n--- Leaderboard Manager ---")
-    print("1. View Leaderboard")
-    print("2. Add Player")
-    print("3. Remove Player")
-    print("4. Update Leaderboard")
-    print("5. Exit")
+    for key, value in MENU_OPTIONS.items():
+        print(f"{key}. {value}")
 
-def get_input(prompt):
+def display_metrics() -> None:
+    print("\nMetrics to sort by:")
+    for key, (name, _) in METRICS.items():
+        print(f"{key}. {name}")
+
+def get_input(prompt: str) -> str | None:
     user_input = input(prompt).strip()
     if user_input.lower() == 'q':
         print("Operation canceled. Returning to main menu...")
         return None  # Indicate that the user wants to quit
     return user_input
 
-async def main():
+async def handle_view_leaderboard(leaderboard_service: LeaderboardService) -> None:
+    display_metrics()
+    metric_choice = get_input("Enter the metric to sort on (1-6, or 'q' to cancel): ")
+    if metric_choice is None or metric_choice not in METRICS:
+        print("Invalid choice or operation canceled. Returning to main menu.")
+        return
+
+    metric_to_sort = METRICS[metric_choice][1]
+
+    try:
+        print("\n--- Leaderboard ---")
+        leaderboard_service.view_leaderboard(metric_to_sort)
+    except Exception as e:
+        print(f"An error occurred while fetching the leaderboard: {e}")
+
+async def handle_add_player(leaderboard_service: LeaderboardService) -> None:
+    game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
+    if game_name is None:
+        return
+
+    tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
+    if tag_line is None:
+        return
+
+    try:
+        print(await leaderboard_service.add_player(game_name, tag_line))
+    except Exception as e:
+        print(f"An error occurred while adding the player: {e}")
+
+async def handle_remove_player(leaderboard_service: LeaderboardService) -> None:
+    print(leaderboard_service.get_leaderboard_players())
+    game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
+    if game_name is None:
+        return
+
+    tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
+    if tag_line is None:
+        return
+
+    try:
+        print(leaderboard_service.remove_player(game_name, tag_line))
+    except ValueError:
+        print("Invalid input. Please enter a valid game name and tag line.")
+    except Exception as e:
+        print(f"An error occurred while removing a player: {e}")
+
+async def handle_update_leaderboard(leaderboard_service: LeaderboardService) -> None:
+    try:
+        await leaderboard_service.combine_matches()
+    except Exception as e:
+        print(f"An error occurred while updating the leaderboard: {e}")
+
+async def main() -> None:
     leaderboard_service = LeaderboardService()
 
     while True:
         display_menu()
         choice = get_input("Choose an option: ")
 
-        if choice == '1':
-            metrics = {
-                '1': 'Average Damage',
-                '2': 'KDA',
-            }
-
-            print("\nMetrics to sort by:")
-            for key, value in metrics.items():
-                print(f"{key}. {value}")
-
-            metric_choice = get_input("Enter the metric to sort on (1-2, or 'q' to cancel): ")
-            if metric_choice is None:
-                continue
-
-            metric_to_sort = ""
-
-            if metric_choice not in metrics:
-                print("Invalid choice for metric. Please try again.")
-                continue
-            elif metric_choice == '1':
-                metric_to_sort = DynamoDBTables.StatsTable.TOTAL_AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS
-            elif metric_choice == '2':
-                metric_to_sort = DynamoDBTables.StatsTable.KDA
-
-            try:
-                print("\n--- Leaderboard ---")
-                leaderboard_service.view_leaderboard(metric_to_sort)
-            except Exception as e:
-                print(f"An error occurred while fetching the leaderboard: {e}")
-
-        elif choice == '2':
-            game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
-            if game_name is None:
-                continue
-
-            tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
-            if tag_line is None:
-                continue
-
-            try:
-                print(await leaderboard_service.add_player(game_name, tag_line))
-            except Exception as e:
-                print(f"An error occurred while adding the player: {e}")
-
-        elif choice == '3':
-            print(leaderboard_service.get_leaderboard_players())
-            game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
-            if game_name is None:
-                continue
-
-            tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
-            if tag_line is None:
-                continue
-            try:
-                print(leaderboard_service.remove_player(game_name, tag_line))
-            except ValueError:
-                print("Invalid input. Please enter a number.")
-            except Exception as e:
-                print(f"An error occurred while removing a player: {e}")
-
-        elif choice == '4':
-            try:
-                await leaderboard_service.combine_matches()
-            except Exception as e:
-                print(f"An error occurred while updating the leaderboard: {e}")
-
-        elif choice == '5':
+        if choice == "1":
+            await handle_view_leaderboard(leaderboard_service)
+        elif choice == "2":
+            await handle_add_player(leaderboard_service)
+        elif choice == "3":
+            await handle_remove_player(leaderboard_service)
+        elif choice == "4":
+            await handle_update_leaderboard(leaderboard_service)
+        elif choice == "5":
             print("Exiting Leaderboard Manager.")
             break
-
         else:
             print("Invalid choice. Please try again.")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
