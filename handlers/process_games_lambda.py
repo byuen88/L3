@@ -86,7 +86,7 @@ def lambda_handler(event, context):
     # calculate averages
     for stats in grouped_by_puuid.values():
         for key in all_stat_keys:
-            if key is not 'damageDealtToChampionsRecord':
+            if key != 'damageDealtToChampionsRecord':
                 stats[key] = stats[key] / stats["numberOfGames"] if stats["numberOfGames"] > 0 else 0
             
     # new function that does it all 
