@@ -4,10 +4,11 @@ from models.player import Player
 from decimal import Decimal
 from collections import OrderedDict
 from db.db_constants import DynamoDBTables
+import os
 
 class DynamoClient:
     def __init__(self):
-        self.dynamodb = boto3.resource('dynamodb', region_name="ca-central-1")
+        self.dynamodb = boto3.resource('dynamodb', region_name=os.getenv("REGION_NAME"))
         self.players_table = self.dynamodb.Table(DynamoDBTables.PlayersTable.TABLE_NAME)
         self.processing_status_table = self.dynamodb.Table(DynamoDBTables.ProcessingStatusTable.TABLE_NAME)
         self.stats_table = self.dynamodb.Table(DynamoDBTables.StatsTable.TABLE_NAME)
@@ -17,9 +18,9 @@ class DynamoClient:
         try:
             self.players_table.put_item(
                 Item={
-                    'game_name': player.game_name,
-                    'tag_line': player.tag_line,
-                    'puuid': player.puuid
+                    DynamoDBTables.PlayersTable.GAME_NAME: player.game_name,
+                    DynamoDBTables.PlayersTable.TAG_LINE: player.tag_line,
+                    DynamoDBTables.PlayersTable.PUUID: player.puuid
                 }
             )
         except ClientError as e:
@@ -30,13 +31,13 @@ class DynamoClient:
         try:
             self.players_table.delete_item(
                 Key={
-                    'game_name': game_name,
-                    'tag_line': tag_line
+                    DynamoDBTables.PlayersTable.GAME_NAME: game_name,
+                    DynamoDBTables.PlayersTable.TAG_LINE: tag_line
                 }
             )
             self.stats_table.delete_item(
                 Key={
-                    'puuid': puuid
+                    DynamoDBTables.StatsTable.PUUID: puuid
                 }
             )
         except ClientError as e:
@@ -63,8 +64,8 @@ class DynamoClient:
         try:
             self.players_table.update_item(
                 Key={
-                    'game_name': game_name,
-                    'tag_line': tag_line
+                    DynamoDBTables.PlayersTable.GAME_NAME: game_name,
+                    DynamoDBTables.PlayersTable.TAG_LINE: tag_line
                 },
                 UpdateExpression='SET avg_damage = :val1',
                 ExpressionAttributeValues={
@@ -75,6 +76,21 @@ class DynamoClient:
             print(e.response['Error']['Message'])
             return []
 
+    def get_all_player_stats_from_dynamodb(self):
+        try:
+            response = self.stats_table.scan()
+            data = response['Items']
+
+            while 'LastEvaluatedKey' in response:
+                response = self.stats_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+                data.extend(response['Items'])
+
+            return data
+
+        except Exception as e:
+            print(f"Error retrieving data: {e}")
+            return None
+
     def check_processing_status(self, leaderboard_name):
         """Returns processing status"""
         try:
@@ -82,8 +98,8 @@ class DynamoClient:
             items = response['Items']
 
             for item in items:
-                if item['leaderboard_name'] == leaderboard_name:
-                    return items[0].get('processing', False)
+                if item[DynamoDBTables.ProcessingStatusTable.LEADERBOARD_NAME] == leaderboard_name:
+                    return items[0].get(DynamoDBTables.ProcessingStatusTable.PROCESSING, False)
             else:
                 # If no matching leaderboard_name is found
                 return None

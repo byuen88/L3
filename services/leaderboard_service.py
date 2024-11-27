@@ -1,7 +1,6 @@
 
 from models.player import Player
 from services.bucket_services import BucketService
-from db.db_query import get_all_player_stats_from_dynamodb
 from db.db_constants import DynamoDBTables
 import asyncio
 import json
@@ -25,7 +24,7 @@ class LeaderboardService:
 
     def view_leaderboard(self, metric_to_sort):
         """Query database for calculated statistics and display based on specified order"""
-        data = get_all_player_stats_from_dynamodb()
+        data = self.db.get_all_player_stats_from_dynamodb()
 
         if not data or len(data) == 0:
             print("No statistics to show")

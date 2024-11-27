@@ -9,6 +9,7 @@
 RIOT_API_KEY=<L3 RIOT API key>
 RIOT_BASE_URL=https://americas.api.riotgames.com
 BUCKET_NAME="l3-bucket"
+REGION_NAME="ca-central-1"
 AWS_ACCESS_KEY_ID=<aws group access key ID>
 AWS_SECRET_ACCESS_KEY=<aws group access key>
 AWS_SESSION_TOKEN=<aws session token>

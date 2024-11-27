@@ -3,6 +3,7 @@ from api.riot_api import RiotAPI
 from db.dynamo import DynamoClient
 from services.leaderboard_service import LeaderboardService
 from db.db_constants import DynamoDBTables
+from dotenv import load_dotenv
 
 # Menu Options Constants
 MENU_OPTIONS = {
@@ -94,6 +95,7 @@ async def handle_update_leaderboard(leaderboard_service: LeaderboardService) -> 
         print(f"An error occurred while updating the leaderboard: {e}")
 
 async def main() -> None:
+    load_dotenv()
     db = DynamoClient()
     riot_api = RiotAPI()
     leaderboard_name = "main_table"
