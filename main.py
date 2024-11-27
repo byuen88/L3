@@ -1,4 +1,6 @@
 import asyncio
+from api.riot_api import RiotAPI
+from db.dynamo import DynamoClient
 from services.leaderboard_service import LeaderboardService
 from db.db_constants import DynamoDBTables
 
@@ -37,7 +39,10 @@ def get_input(prompt: str) -> str | None:
         return None  # Indicate that the user wants to quit
     return user_input
 
-async def handle_view_leaderboard(leaderboard_service: LeaderboardService) -> None:
+async def handle_view_leaderboard(leaderboard_service: LeaderboardService, db: DynamoClient, leaderboard_name: str) -> None:
+    if db.check_processing_status(leaderboard_name):
+        print("Leaderboard update in process")
+        return
     display_metrics()
     metric_choice = get_input("Enter the metric to sort on (1-6, or 'q' to cancel): ")
     if metric_choice is None or metric_choice not in METRICS:
@@ -90,14 +95,17 @@ async def handle_update_leaderboard(leaderboard_service: LeaderboardService) -> 
         print(f"An error occurred while updating the leaderboard: {e}")
 
 async def main() -> None:
-    leaderboard_service = LeaderboardService("main_table")
+    db = DynamoClient()
+    riot_api = RiotAPI()
+    leaderboard_name = "main_table"
+    leaderboard_service = LeaderboardService(leaderboard_name, riot_api, db)
 
     while True:
         display_menu()
         choice = get_input("Choose an option: ")
 
         if choice == "1":
-            await handle_view_leaderboard(leaderboard_service)
+            await handle_view_leaderboard(leaderboard_service, db, leaderboard_name)
         elif choice == "2":
             await handle_add_player(leaderboard_service)
         elif choice == "3":

@@ -1,7 +1,6 @@
-from api.riot_api import RiotAPI
+
 from models.player import Player
 from services.bucket_services import BucketService
-from db.dynamo import DynamoClient
 from db.db_query import get_all_player_stats_from_dynamodb
 from db.db_constants import DynamoDBTables
 import asyncio
@@ -12,9 +11,9 @@ import os
 import traceback
 
 class LeaderboardService:
-    def __init__(self, leaderboard_name):
-        self.riot_api = RiotAPI()
-        self.db = DynamoClient()
+    def __init__(self, leaderboard_name, riot_api, db):
+        self.riot_api = riot_api
+        self.db = db
         self.leaderboard = self.db.get_all_players()
         self.ec2_volume = "/app/data/"
         self.combined_json = "combined.json"
@@ -26,10 +25,6 @@ class LeaderboardService:
 
     def view_leaderboard(self, metric_to_sort):
         """Query database for calculated statistics and display based on specified order"""
-        if self.db.check_processing_status(self.leaderboard_name):
-            print("Leaderboard update in process")
-            return
-
         data = get_all_player_stats_from_dynamodb()
 
         if not data or len(data) == 0:
