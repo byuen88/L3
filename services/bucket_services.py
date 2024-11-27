@@ -29,7 +29,7 @@ class BucketService:
         # s3_client = boto3.client('s3')
         try:
             s3_client.upload_file(file_name, self.bucket_name, object_name)
-            print(f"Sucessfully uploaded file to S3 bucket")
+            print(f"Sucessfully uploaded file to S3 bucket, please wait a moment for the leaderboard to update.")
         except ClientError as e:
             logging.error(e)
             return False

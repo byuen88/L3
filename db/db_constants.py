@@ -10,5 +10,9 @@ class DynamoDBTables:
         PUUID = "puuid"
         KDA = "kda"
         NUMBER_OF_GAMES = "numberOfGames"
-        TOTAL_AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS = "totalAverageDamageDealtToChampions"
+        AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS = "totalDamageDealtToChampions"
+        CS_PER_MIN = "csPerMin"
+        DAMAGE_RECORD = "damageDealtToChampionsRecord"
+        AVERAGE_GOLD_EARNED = "goldEarned"
+        AVERAGE_TIME_SPENT_DEAD = "totalTimeSpentDead"
 
