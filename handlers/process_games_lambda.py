@@ -130,7 +130,7 @@ def lambda_handler(event, context):
                 )
             else:
                 # If the player does not exist, create new items for them
-                item = {key: {'N': str(value)} for key, value in stats.items()}
+                item = {key: {'N': str(round(value, 2))} for key, value in stats.items()}
                 item['puuid'] = {'S': puuid}
                 item['numberOfGames'] = {'N': str(stats['numberOfGames'])}
                 

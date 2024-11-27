@@ -18,7 +18,6 @@ class DynamoClient:
                     'puuid': player.puuid
                 }
             )
-            print(f"Player {player.game_name}#{player.tag_line} added to DynamoDB.")
         except ClientError as e:
             print(e.response['Error']['Message'])
     
@@ -31,7 +30,6 @@ class DynamoClient:
                     'tag_line': tag_line
                 }
             )
-            print(f"Player {game_name}#{tag_line} removed from DynamoDB.")
         except ClientError as e:
             print(e.response['Error']['Message'])
 
