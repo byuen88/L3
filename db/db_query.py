@@ -26,5 +26,3 @@ def get_all_player_stats_from_dynamodb():
     except Exception as e:
         print(f"Error retrieving data: {e}")
         return None
-
-
