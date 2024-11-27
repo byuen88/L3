@@ -118,6 +118,7 @@ class LeaderboardService:
 
     def remove_player(self, game_name, tag_line):
         """Remove a player from the leaderboard."""
+        self.leaderboard = self.db.get_all_players()
         tag_line = tag_line.upper()
         
         # Remove from DB
