@@ -222,42 +222,51 @@ class LeaderboardService:
             last_update_time = ""
         return last_update_time
 
-    async def combine_matches(self):
-        """get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket"""
+    async def combine_matches(self, puuid=None):
+        """
+        get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket
+        If puuid is provided, only fetch matches for that player. Otherwise, fetch matches for all players.
+        """
         combined = {}
-        
-        # check if there are any additions or deletions of player
-        if self.player_add_delete:
-            last_update_time = ""
-            self.player_add_delete = False
-        else:
-            last_update_time = self.get_last_update_time()
+        combined_json_path = self.get_file_path(self.combined_json)
 
-        puuids = list(self.leaderboard.keys())
+        # Load existing combined data if available
+        if os.path.exists(combined_json_path):
+            with open(combined_json_path, "r") as f:
+                combined = json.load(f)
+
+        # Determine which players to process
+        puuids_to_process = [puuid] if puuid else list(self.leaderboard.keys())
+
         try:
-            for puuid in puuids:
-                # get matches since the last update
-                match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time,
-                                                                               count=3)  # TODO: count=3 for now to save space
+            for puuid in puuids_to_process:
+                # Fetch matches since last update time or for new players
+                last_update_time = self.get_last_update_time() if not puuid else ""
+                match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time)
+
                 for match_id in match_ids:
-                    match = await self.riot_api.get_match_by_match_id(match_id)
-                    # shorten the json to only relevant participants info
-                    match["info"]["participants"] = [
-                        participant for participant in match["info"]["participants"] if participant["puuid"] in puuids
-                    ]
                     if match_id not in combined:
+                        match = await self.riot_api.get_match_by_match_id(match_id)
+                        # Filter match participants to only those in the leaderboard
+                        match["info"]["participants"] = [
+                            participant for participant in match["info"]["participants"]
+                            if participant["puuid"] in self.leaderboard
+                        ]
                         combined[match_id] = match
+
             if combined:
-                combined_json = self.get_file_path(self.combined_json)
-                with open(combined_json, "w") as f:
+                # Write updated combined data back to JSON
+                with open(combined_json_path, "w") as f:
                     json.dump(combined, f)
-                # upload json to S3
-                BucketService().upload_file(combined_json, self.combined_json)
+                # Upload JSON to S3
+                BucketService().upload_file(combined_json_path, self.combined_json)
             else:
                 print("\nAll games are up-to-date.")
+
         except Exception as e:
             print(f"\nAn error occurred while processing matches: {e}")
             traceback.print_exc()
 
-        self.save_last_update_time()
-        
+        # Save the update time if called for all players
+        if not puuid:
+            self.save_last_update_time()
