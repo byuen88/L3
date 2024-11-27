@@ -89,6 +89,7 @@ class LeaderboardService:
 
     async def add_player(self, game_name, tag_line):
         """Add a player to the leaderboard."""
+        self.leaderboard = self.db.get_all_players()
         tag_line = tag_line.upper()
 
         # check for duplicate player
