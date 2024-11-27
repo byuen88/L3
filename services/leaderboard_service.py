@@ -1,5 +1,3 @@
-from tensorflow import truediv
-
 from api.riot_api import RiotAPI
 from models.player import Player
 from services.bucket_services import BucketService
