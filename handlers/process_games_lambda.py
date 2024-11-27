@@ -1,7 +1,6 @@
 import json
 import boto3
 from botocore.exceptions import ClientError
-from decimal import Decimal
 
 s3_client = boto3.client('s3')
 dynamodb = boto3.client('dynamodb')
@@ -53,7 +52,7 @@ def lambda_handler(event, context):
     
     # participant_stat_keys ignores puuid
     participant_stat_keys = ['totalDamageDealtToChampions', 'totalDamageTaken', 'totalTimeSpentDead', 'wardsPlaced']
-    challenges_stat_keys = ['kda', 'multikills', 'soloKills', 'takedowns']
+    challenges_stat_keys = ['kda', 'soloKills', 'takedowns']
     all_stat_keys = participant_stat_keys + challenges_stat_keys
         
     # getting all raw entries    
@@ -97,11 +96,11 @@ def lambda_handler(event, context):
                 total_games = existing_number_of_games + stats['numberOfGames']
                 updated_stats = {}
                 
-                # For each key, get existing stats from DynamoDB and calculate new values
+                # For each key, get existing stats from DynamoDB, calculate and round new values
                 for key in all_stat_keys:
-                    existing_value = Decimal(existing_item[key]['N']) if key in existing_item else 0
+                    existing_value = float(existing_item[key]['N']) if key in existing_item else 0
                     new_value = (existing_value * existing_number_of_games + stats[key] * stats['numberOfGames']) / total_games
-                    updated_stats[key] = new_value
+                    updated_stats[key] = round(new_value, 2)
                 
                 updated_stats['numberOfGames'] = total_games
 
