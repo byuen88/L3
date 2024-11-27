@@ -2,6 +2,7 @@ import boto3
 from botocore.exceptions import ClientError
 from models.player import Player
 from decimal import Decimal
+from collections import OrderedDict
 
 class DynamoClient:
     def __init__(self):
@@ -45,7 +46,7 @@ class DynamoClient:
         try:
             response = self.players_table.scan()
             items = response.get('Items', [])
-            players = {}
+            players = OrderedDict()
 
             for item in items:
                 player = Player(**item)

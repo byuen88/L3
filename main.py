@@ -40,7 +40,10 @@ def get_input(prompt: str) -> str | None:
     return user_input
 
 async def handle_view_leaderboard(leaderboard_service: LeaderboardService, db: DynamoClient, leaderboard_name: str) -> None:
-    if db.check_processing_status(leaderboard_name):
+    status = db.check_processing_status(leaderboard_name)
+    if status is None:
+        return
+    elif status:
         print("Leaderboard update in process")
         return
     display_metrics()
@@ -73,18 +76,14 @@ async def handle_add_player(leaderboard_service: LeaderboardService) -> None:
 
 async def handle_remove_player(leaderboard_service: LeaderboardService) -> None:
     print(leaderboard_service.get_leaderboard_players())
-    game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
-    if game_name is None:
-        return
-
-    tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
-    if tag_line is None:
+    index = get_input("Enter the player's number (or 'q' to cancel): ")
+    if index is None:
         return
 
     try:
-        print(leaderboard_service.remove_player(game_name, tag_line))
+        print(leaderboard_service.remove_player(int(index)))
     except ValueError:
-        print("Invalid input. Please enter a valid game name and tag line.")
+        print("Invalid input. Please enter a number.")
     except Exception as e:
         print(f"An error occurred while removing a player: {e}")
 

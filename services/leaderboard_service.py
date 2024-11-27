@@ -156,21 +156,22 @@ class LeaderboardService:
 
         return f"Player {game_name}#{tag_line} added to leaderboard."
 
-    def remove_player(self, game_name, tag_line):
+    def remove_player(self, index):
         """Remove a player from the leaderboard."""
         self.leaderboard = self.db.get_all_players()
-        tag_line = tag_line.upper()
+        if not self.leaderboard:
+            return "Leaderboard is currently empty."
 
-        for player in self.leaderboard.values():
-            if player.game_name.upper() == game_name.upper() and player.tag_line == tag_line:
+        for idx, player in enumerate(self.leaderboard.values(), start=1):
+            if idx == index:
                 # Remove from DB
-                self.db.remove_player(player.puuid, game_name, tag_line)
+                self.db.remove_player(player.puuid, player.game_name, player.tag_line)
                 # Remove from cache
                 self.leaderboard.pop(player.puuid)
-                return f"Player {game_name}#{tag_line} removed from leaderboard DB."
+                return f"Player {player.game_name}#{player.tag_line} removed from the leaderboard."
 
         self.player_add_delete = True
-        return f"No player found with name {game_name}#{tag_line} in DB."
+        return f"No player found in the leaderboard."
 
     async def update_leaderboard(self, start_time, count):
         """Update leaderboard stats if the cooldown has passed."""
