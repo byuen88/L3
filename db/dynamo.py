@@ -2,7 +2,6 @@ import boto3
 from botocore.exceptions import ClientError
 from models.player import Player
 from decimal import Decimal
-from boto3.dynamodb.conditions import Key
 
 class DynamoClient:
     def __init__(self):
