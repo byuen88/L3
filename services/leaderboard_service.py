@@ -73,7 +73,7 @@ class LeaderboardService:
             if player:  # Ensure player exists
                 name = f"{player.game_name}#{player.tag_line}"
                 print(
-                    f"{count}) {name:<{longest_name_length}} | {round(average_damage, 2):<{damage_col_width}} | {round(kda, 2):<{kda_col_width}}"
+                    f"{count}) {name:<{longest_name_length}} | {round(average_damage, 0):<{damage_col_width}} | {round(kda, 2):<{kda_col_width}}"
                 )
                 count += 1
 
