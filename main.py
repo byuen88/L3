@@ -45,7 +45,7 @@ async def main():
                 print("Invalid choice for metric. Please try again.")
                 continue
             elif metric_choice == '1':
-                metric_to_sort = DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS
+                metric_to_sort = DynamoDBTables.StatsTable.TOTAL_AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS
             elif metric_choice == '2':
                 metric_to_sort = DynamoDBTables.StatsTable.KDA
 

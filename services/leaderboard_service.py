@@ -33,7 +33,7 @@ class LeaderboardService:
 
         sort_idx = -1
 
-        if (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS):
+        if (metric_to_sort == DynamoDBTables.StatsTable.TOTAL_AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS):
             sort_idx = 1
         elif (metric_to_sort == DynamoDBTables.StatsTable.KDA):
             sort_idx = 2
@@ -44,7 +44,7 @@ class LeaderboardService:
 
         sorted_data = sorted(
             [(item["puuid"],
-              item[DynamoDBTables.StatsTable.AVERAGE_TOTAL_DAMAGE_DEALT_TO_CHAMPIONS],
+              item[DynamoDBTables.StatsTable.TOTAL_AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS],
               item[DynamoDBTables.StatsTable.KDA]) for item in data],
             key=lambda x: x[sort_idx],  # Sort by the metric value
             reverse=True
