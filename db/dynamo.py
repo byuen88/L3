@@ -3,13 +3,14 @@ from botocore.exceptions import ClientError
 from models.player import Player
 from decimal import Decimal
 from collections import OrderedDict
+from db.db_constants import DynamoDBTables
 
 class DynamoClient:
     def __init__(self):
         self.dynamodb = boto3.resource('dynamodb', region_name="ca-central-1")
-        self.players_table = self.dynamodb.Table('players')
-        self.processing_status_table = self.dynamodb.Table('processing_status')
-        self.stats_table = self.dynamodb.Table('stats')
+        self.players_table = self.dynamodb.Table(DynamoDBTables.PlayersTable.TABLE_NAME)
+        self.processing_status_table = self.dynamodb.Table(DynamoDBTables.ProcessingStatusTable.TABLE_NAME)
+        self.stats_table = self.dynamodb.Table(DynamoDBTables.StatsTable.TABLE_NAME)
         
     def add_player(self, player: Player):
         """Add a player to DynamoDB."""
