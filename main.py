@@ -90,7 +90,7 @@ async def handle_update_leaderboard(leaderboard_service: LeaderboardService) -> 
         print(f"An error occurred while updating the leaderboard: {e}")
 
 async def main() -> None:
-    leaderboard_service = LeaderboardService()
+    leaderboard_service = LeaderboardService("main_table")
 
     while True:
         display_menu()

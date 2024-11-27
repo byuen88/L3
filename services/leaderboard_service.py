@@ -1,3 +1,5 @@
+from tensorflow import truediv
+
 from api.riot_api import RiotAPI
 from models.player import Player
 from services.bucket_services import BucketService
@@ -12,7 +14,7 @@ import os
 import traceback
 
 class LeaderboardService:
-    def __init__(self):
+    def __init__(self, leaderboard_name):
         self.riot_api = RiotAPI()
         self.db = DynamoClient()
         self.leaderboard = self.db.get_all_players()
@@ -22,9 +24,13 @@ class LeaderboardService:
         self.player_add_delete = False
         self.update_lock = asyncio.Lock()  # Lock for single-process control
         self.cooldown = 120  # Cooldown period in seconds
+        self.leaderboard_name = leaderboard_name
 
     def view_leaderboard(self, metric_to_sort):
         """Query database for calculated statistics and display based on specified order"""
+        if self.db.check_processing_status(self.leaderboard_name):
+            print("Leaderboard update in process")
+            return
 
         data = get_all_player_stats_from_dynamodb()
 
@@ -78,7 +84,7 @@ class LeaderboardService:
 
         # Display leaderboard header
         print(
-            f"{'Player':<{longest_name_length + 3}} | "
+            f"{'Player':<{longest_name_length + 4}} | "
             f"{'KDA':<{short_width}} | "
             f"{'CS/min':<{medium_width}} | "
             f"{'Damage Record':<{long_width}} | "
@@ -86,7 +92,7 @@ class LeaderboardService:
             f"{'AVG Gold':<{medium_width}} | "
             f"{'AVG Time Dead (s)':<{long_width}} | "
         )
-        print("-" * (longest_name_length + 3 + short_width + medium_width + long_width + medium_width + medium_width + long_width + 20))
+        print("-" * (longest_name_length + 4 + short_width + medium_width + long_width + medium_width + medium_width + long_width + 20))
 
         # Display leaderboard rows
         for puuid, kda, cs, damage_record, avg_dmg, avg_gold, avg_dead in sorted_data:
@@ -94,15 +100,26 @@ class LeaderboardService:
 
             if player:  # Ensure player exists
                 name = f"{player.game_name}#{player.tag_line}"
-                print(
-                    f"{count}) {name:<{longest_name_length}} | "
-                    f"{round(kda, 2):<{short_width}} | "
-                    f"{round(cs, 2):<{medium_width}} | "
-                    f"{round(damage_record, 0):<{long_width}} | "
-                    f"{round(avg_dmg, 0):<{medium_width}} | "
-                    f"{round(avg_gold, 0):<{medium_width}} | "
-                    f"{round(avg_dead, 0):<{long_width}} | "
-                )
+                if count < 10:
+                    print(
+                        f"{count}) {name:<{longest_name_length + 1}} | "
+                        f"{round(kda, 2):<{short_width}} | "
+                        f"{round(cs, 2):<{medium_width}} | "
+                        f"{round(damage_record, 0):<{long_width}} | "
+                        f"{round(avg_dmg, 0):<{medium_width}} | "
+                        f"{round(avg_gold, 0):<{medium_width}} | "
+                        f"{round(avg_dead, 0):<{long_width}} | "
+                    )
+                else:
+                    print(
+                        f"{count}) {name:<{longest_name_length}} | "
+                        f"{round(kda, 2):<{short_width}} | "
+                        f"{round(cs, 2):<{medium_width}} | "
+                        f"{round(damage_record, 0):<{long_width}} | "
+                        f"{round(avg_dmg, 0):<{medium_width}} | "
+                        f"{round(avg_gold, 0):<{medium_width}} | "
+                        f"{round(avg_dead, 0):<{long_width}} | "
+                    )
                 count += 1
 
     def get_leaderboard_players(self):
@@ -142,19 +159,20 @@ class LeaderboardService:
         self.db.add_player(player)
         self.player_add_delete = True
 
+        await self.combine_matches()
+
         return f"Player {game_name}#{tag_line} added to leaderboard."
 
     def remove_player(self, game_name, tag_line):
         """Remove a player from the leaderboard."""
         self.leaderboard = self.db.get_all_players()
         tag_line = tag_line.upper()
-        
-        # Remove from DB
-        self.db.remove_player(game_name, tag_line)
-        
-        # Remove from cache
+
         for player in self.leaderboard.values():
             if player.game_name.upper() == game_name.upper() and player.tag_line == tag_line:
+                # Remove from DB
+                self.db.remove_player(player.puuid, game_name, tag_line)
+                # Remove from cache
                 self.leaderboard.pop(player.puuid)
                 return f"Player {game_name}#{tag_line} removed from leaderboard DB."
 

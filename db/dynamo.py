@@ -2,16 +2,19 @@ import boto3
 from botocore.exceptions import ClientError
 from models.player import Player
 from decimal import Decimal
+from boto3.dynamodb.conditions import Key
 
 class DynamoClient:
-    def __init__(self, table_name='players'):
+    def __init__(self):
         self.dynamodb = boto3.resource('dynamodb', region_name="ca-central-1")
-        self.table = self.dynamodb.Table(table_name)
+        self.players_table = self.dynamodb.Table('players')
+        self.processing_status_table = self.dynamodb.Table('processing_status')
+        self.stats_table = self.dynamodb.Table('stats')
         
     def add_player(self, player: Player):
         """Add a player to DynamoDB."""
         try:
-            self.table.put_item(
+            self.players_table.put_item(
                 Item={
                     'game_name': player.game_name,
                     'tag_line': player.tag_line,
@@ -21,13 +24,18 @@ class DynamoClient:
         except ClientError as e:
             print(e.response['Error']['Message'])
     
-    def remove_player(self, game_name, tag_line):
+    def remove_player(self, puuid, game_name, tag_line):
         """Remove a player from DynamoDB."""
         try:
-            self.table.delete_item(
+            self.players_table.delete_item(
                 Key={
                     'game_name': game_name,
                     'tag_line': tag_line
+                }
+            )
+            self.stats_table.delete_item(
+                Key={
+                    'puuid': puuid
                 }
             )
         except ClientError as e:
@@ -36,7 +44,7 @@ class DynamoClient:
     def get_all_players(self):
         """Get all players from DynamoDB as a dictionary."""
         try:
-            response = self.table.scan()
+            response = self.players_table.scan()
             items = response.get('Items', [])
             players = {}
 
@@ -52,7 +60,7 @@ class DynamoClient:
     def update_player_damage(self, game_name, tag_line, avg_damage):
         """Update a player's information in DB."""
         try:
-            self.table.update_item(
+            self.players_table.update_item(
                 Key={
                     'game_name': game_name,
                     'tag_line': tag_line
@@ -65,3 +73,20 @@ class DynamoClient:
         except ClientError as e:
             print(e.response['Error']['Message'])
             return []
+
+    def check_processing_status(self, leaderboard_name):
+        """Returns processing status"""
+        try:
+            response = self.processing_status_table.scan()
+            items = response['Items']
+
+            for item in items:
+                if item['leaderboard_name'] == leaderboard_name:
+                    return items[0].get('processing', False)
+            else:
+                # If no matching leaderboard_name is found
+                return None
+        except ClientError as e:
+            print(f"Error querying table: {e}")
+            return None
+
