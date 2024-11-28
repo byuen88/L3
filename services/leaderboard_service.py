@@ -17,7 +17,6 @@ class LeaderboardService:
         self.ec2_volume = "/app/data/"
         self.combined_json = "combined.json"
         self.latest_update_time = "last_update_time"
-        self.player_add_delete = False
         self.update_lock = asyncio.Lock()  # Lock for single-process control
         self.cooldown = 120  # Cooldown period in seconds
         self.leaderboard_name = leaderboard_name
@@ -153,9 +152,8 @@ class LeaderboardService:
 
         # Add to DB
         self.db.add_player(player)
-        self.player_add_delete = True
 
-        await self.combine_matches()
+        await self.combine_matches(puuid)
 
         return f"Player {game_name}#{tag_line} added to leaderboard."
 
@@ -173,7 +171,6 @@ class LeaderboardService:
                 self.leaderboard.pop(player.puuid)
                 return f"Player {player.game_name}#{player.tag_line} removed from the leaderboard."
 
-        self.player_add_delete = True
         return f"No player found in the leaderboard."
 
     async def update_leaderboard(self, start_time, count):
@@ -237,42 +234,44 @@ class LeaderboardService:
             last_update_time = ""
         return last_update_time
 
-    async def combine_matches(self):
+    async def combine_matches(self, new_puuid=None):
         """get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket"""
         combined = {}
-        
-        # check if there are any additions or deletions of player
-        if self.player_add_delete:
-            last_update_time = ""
-            self.player_add_delete = False
-        else:
-            last_update_time = self.get_last_update_time()
+        new_matches_found = False
+        combined_json_path = self.get_file_path(self.combined_json)
+        puuids = [new_puuid] + list(self.leaderboard.keys()) if new_puuid else list(self.leaderboard.keys())
+        last_update_time = self.get_last_update_time()
 
-        puuids = list(self.leaderboard.keys())
         try:
             for puuid in puuids:
-                # get matches since the last update
-                match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time,
-                                                                               count=3)  # TODO: count=3 for now to save space
+                # For new players (if puuid given), fetch all matches (no start_time)
+                current_start_time = "" if puuid == new_puuid else last_update_time
+
+                match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=current_start_time)
+
                 for match_id in match_ids:
+                    if match_id in combined:
+                        continue
+
                     match = await self.riot_api.get_match_by_match_id(match_id)
-                    # shorten the json to only relevant participants info
+                    # Filter participants to include only leaderboard players
                     match["info"]["participants"] = [
-                        participant for participant in match["info"]["participants"] if participant["puuid"] in puuids
+                        participant for participant in match["info"]["participants"]
+                        if participant["puuid"] in self.leaderboard
                     ]
-                    if match_id not in combined:
-                        combined[match_id] = match
-            if combined:
-                combined_json = self.get_file_path(self.combined_json)
-                with open(combined_json, "w") as f:
+                    combined[match_id] = match
+                    new_matches_found = True 
+
+            if new_matches_found:
+                with open(combined_json_path, "w") as f:
                     json.dump(combined, f)
                 # upload json to S3
-                BucketService().upload_file(combined_json, self.combined_json)
+                BucketService().upload_file(combined_json_path, self.combined_json)
             else:
                 print("\nAll games are up-to-date.")
+
         except Exception as e:
             print(f"\nAn error occurred while processing matches: {e}")
             traceback.print_exc()
 
         self.save_last_update_time()
-        
