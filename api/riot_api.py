@@ -3,10 +3,7 @@ import time
 import asyncio
 from collections import deque
 import requests
-from dotenv import load_dotenv
 from api.exceptions import RiotAPIError
-
-load_dotenv()
 
 class RiotAPI:
     max_rate_2mins = (120, 100)    # 100 requests every 2 mins
