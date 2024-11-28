@@ -239,7 +239,6 @@ class LeaderboardService:
         combined = {}
         new_matches_found = False
         combined_json_path = self.get_file_path(self.combined_json)
-
         puuids = [new_puuid] + list(self.leaderboard.keys()) if new_puuid else list(self.leaderboard.keys())
         last_update_time = self.get_last_update_time()
 
@@ -275,5 +274,4 @@ class LeaderboardService:
             print(f"\nAn error occurred while processing matches: {e}")
             traceback.print_exc()
 
-        # Update the last update time if processing all players
         self.save_last_update_time()
