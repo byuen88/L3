@@ -27,7 +27,7 @@ class LeaderboardService:
 
         if not data or len(data) == 0:
             print("No statistics to show")
-            return
+            return []
 
         sort_idx = -1
         if (metric_to_sort == DynamoDBTables.StatsTable.KDA):
@@ -45,7 +45,7 @@ class LeaderboardService:
 
         if (sort_idx == -1):
             print("Sorting on incorrect metric")
-            return
+            return []
 
         sorted_data = sorted(
             [(
@@ -112,6 +112,35 @@ class LeaderboardService:
                         f"{round(avg_dead, 0):<{long_width}} | "
                     )
                 count += 1
+        # ============================= front-end code =============================
+        if sort_idx == -1:
+            return []
+
+        sorted_data = sorted(
+            [(item["puuid"], item[DynamoDBTables.StatsTable.KDA], item[DynamoDBTables.StatsTable.CS_PER_MIN],
+              item[DynamoDBTables.StatsTable.DAMAGE_RECORD], item[DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS],
+              item[DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED], item[DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD])
+             for item in data],
+            key=lambda x: x[sort_idx],
+            reverse=True
+        )
+
+        leaderboard = []
+        for puuid, kda, cs, damage_record, avg_dmg, avg_gold, avg_dead in sorted_data:
+            player = self.leaderboard.get(puuid)
+            if player:
+                leaderboard.append({
+                    "game_name": player.game_name,
+                    "tag_line": player.tag_line,
+                    "kda": kda,
+                    "cs_per_min": cs,
+                    "damage_record": damage_record,
+                    "avg_damage": avg_dmg,
+                    "avg_gold": avg_gold,
+                    "avg_time_dead": avg_dead
+                })
+
+        return leaderboard
 
     def get_leaderboard_players(self):
         """Query the database for all players in the leaderboard."""

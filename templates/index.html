@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>League of Legends Leaderboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #1e90ff;
+            margin-top: 20px;
+        }
+        h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 200px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #1e90ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1c86ee;
+        }
+        table {
+            width: 80%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #1e90ff;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .update-button {
+            margin: 20px 0;
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>League of Legends Leaderboard</h1>
+    <form action="{{ url_for('update_leaderboard') }}" method="post">
+        <button type="submit" class="update-button">Update Leaderboard</button>
+    </form>
+    <h2>Add Player</h2>
+    <form action="{{ url_for('add_player') }}" method="post">
+        <label for="game_name">Game Name:</label>
+        <input type="text" id="game_name" name="game_name" required>
+        <label for="tag_line">Tag Line:</label>
+        <input type="text" id="tag_line" name="tag_line" required>
+        <button type="submit">Add Player</button>
+    </form>
+    <h2>Leaderboard</h2>
+    {% if leaderboard %}
+    <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.KDA) }}" style="color: white;">KDA</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.CS_PER_MIN) }}" style="color: white;">CS/min</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.DAMAGE_RECORD) }}" style="color: white;">Damage Record</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS) }}" style="color: white;">Average Damage</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED) }}" style="color: white;">Average Gold</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD) }}" style="color: white;">Average Time Dead (s)</a></th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in leaderboard %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ player.game_name }}#{{ player.tag_line }}</td>
+                <td>{{ player.kda }}</td>
+                <td>{{ player.cs_per_min }}</td>
+                <td>{{ player.damage_record }}</td>
+                <td>{{ player.avg_damage }}</td>
+                <td>{{ player.avg_gold }}</td>
+                <td>{{ player.avg_time_dead }}</td>
+                <td class="actions">
+                    <form action="{{ url_for('remove_player') }}" method="post">
+                        <input type="hidden" name="player_index" value="{{ loop.index }}">
+                        <button type="submit">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No players in the leaderboard.</p>
+    {% endif %}
+</body>
+</html>
