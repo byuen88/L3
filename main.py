@@ -76,8 +76,11 @@ async def handle_add_player(leaderboard_service: LeaderboardService) -> None:
         print(f"An error occurred while adding the player: {e}")
 
 async def handle_remove_player(leaderboard_service: LeaderboardService) -> None:
-    if leaderboard_service.get_leaderboard_players() is None:
+    leaderboard_players = leaderboard_service.get_leaderboard_players()
+    if leaderboard_players is None:
         return
+
+    print(leaderboard_players)
 
     index = get_input("Enter the player's number (or 'q' to cancel): ")
     if index is None:

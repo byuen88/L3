@@ -116,6 +116,7 @@ class LeaderboardService:
 
     def get_leaderboard_players(self):
         """Query the database for all players in the leaderboard."""
+        self.leaderboard = self.db.get_all_players()
         if not self.leaderboard:
             print("Leaderboard is currently empty.")
             return None
@@ -123,7 +124,7 @@ class LeaderboardService:
         leaderboard_str = "Current Leaderboard:\n"
         for idx, player in enumerate(self.leaderboard.values(), start=1):
             leaderboard_str += f"{idx}. {player.game_name}#{player.tag_line}\n"
-        print(leaderboard_str)
+        return leaderboard_str
 
     async def add_player(self, game_name, tag_line):
         """Add a player to the leaderboard."""
