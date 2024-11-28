@@ -17,7 +17,6 @@ class LeaderboardService:
         self.ec2_volume = "/app/data/"
         self.combined_json = "combined.json"
         self.latest_update_time = "last_update_time"
-        self.player_add_delete = False
         self.update_lock = asyncio.Lock()  # Lock for single-process control
         self.cooldown = 120  # Cooldown period in seconds
         self.leaderboard_name = leaderboard_name
@@ -153,9 +152,8 @@ class LeaderboardService:
 
         # Add to DB
         self.db.add_player(player)
-        self.player_add_delete = True
 
-        await self.combine_matches()
+        await self.combine_matches(puuid)
 
         return f"Player {game_name}#{tag_line} added to leaderboard."
 
@@ -173,7 +171,6 @@ class LeaderboardService:
                 self.leaderboard.pop(player.puuid)
                 return f"Player {player.game_name}#{player.tag_line} removed from the leaderboard."
 
-        self.player_add_delete = True
         return f"No player found in the leaderboard."
 
     async def update_leaderboard(self, start_time, count):
@@ -237,43 +234,39 @@ class LeaderboardService:
             last_update_time = ""
         return last_update_time
 
-    async def combine_matches(self, puuid=None):
-        """
-        get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket
-        If puuid is provided, only fetch matches for that player. Otherwise, fetch matches for all players.
-        """
+    async def combine_matches(self, new_puuid=None):
+        """get matches of all players in leaderboard since the last update, combine them into a single json file, and upload file to S3 bucket"""
         combined = {}
+        new_matches_found = False
         combined_json_path = self.get_file_path(self.combined_json)
 
-        # Load existing combined data if available
-        if os.path.exists(combined_json_path):
-            with open(combined_json_path, "r") as f:
-                combined = json.load(f)
-
-        # Determine which players to process
-        puuids_to_process = [puuid] if puuid else list(self.leaderboard.keys())
+        puuids = [new_puuid] + list(self.leaderboard.keys()) if new_puuid else list(self.leaderboard.keys())
+        last_update_time = self.get_last_update_time()
 
         try:
-            for puuid in puuids_to_process:
-                # Fetch matches since last update time or for new players
-                last_update_time = self.get_last_update_time() if not puuid else ""
-                match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=last_update_time)
+            for puuid in puuids:
+                # For new players (if puuid given), fetch all matches (no start_time)
+                current_start_time = "" if puuid == new_puuid else last_update_time
+
+                match_ids = await self.riot_api.get_list_of_match_ids_by_puuid(puuid, start_time=current_start_time)
 
                 for match_id in match_ids:
-                    if match_id not in combined:
-                        match = await self.riot_api.get_match_by_match_id(match_id)
-                        # Filter match participants to only those in the leaderboard
-                        match["info"]["participants"] = [
-                            participant for participant in match["info"]["participants"]
-                            if participant["puuid"] in self.leaderboard
-                        ]
-                        combined[match_id] = match
+                    if match_id in combined:
+                        continue
 
-            if combined:
-                # Write updated combined data back to JSON
+                    match = await self.riot_api.get_match_by_match_id(match_id)
+                    # Filter participants to include only leaderboard players
+                    match["info"]["participants"] = [
+                        participant for participant in match["info"]["participants"]
+                        if participant["puuid"] in self.leaderboard
+                    ]
+                    combined[match_id] = match
+                    new_matches_found = True 
+
+            if new_matches_found:
                 with open(combined_json_path, "w") as f:
                     json.dump(combined, f)
-                # Upload JSON to S3
+                # upload json to S3
                 BucketService().upload_file(combined_json_path, self.combined_json)
             else:
                 print("\nAll games are up-to-date.")
@@ -282,6 +275,5 @@ class LeaderboardService:
             print(f"\nAn error occurred while processing matches: {e}")
             traceback.print_exc()
 
-        # Save the update time if called for all players
-        if not puuid:
-            self.save_last_update_time()
+        # Update the last update time if processing all players
+        self.save_last_update_time()
