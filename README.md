@@ -1,12 +1,6 @@
 # L3
 
-## Run Application UI
-From the L3 root directory, run
-```
-python app.py
-```
-
-## Run CLI For Developers
+## Run Application For Developers Locally
 
 1. Create a Venv and install all the necessary dependencies listed in `requirements.txt`
 
@@ -23,8 +17,14 @@ AWS_SESSION_TOKEN=<aws session token>
 > Once we move our code to EC2 we won't need  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`. For now just hardcode them here for testing purposes (also these tokens expire, so need to update periodically).
 
 3. Upload `L3_keypair.pem` to root directory. This allows connection to EC2 instance. **REMEMBER TO TURN OFF EC2 INSTANCE**
-
-4. Run `python main.py` from L3 root directory
+4. To run the CLI application, run from the L3 root directory
+```
+python main.py
+```
+5. OR to run the Web UI application, run from the L3 root directory
+```
+python app.py
+```
 
 ## Containerize L3
 
