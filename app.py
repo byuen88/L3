@@ -15,13 +15,16 @@ leaderboard_service = LeaderboardService("main_table", riot_api, db)
 def index():
     metric_to_sort = request.args.get('metric', DynamoDBTables.StatsTable.KDA)
     leaderboard = leaderboard_service.view_leaderboard(metric_to_sort)
-    return render_template('index.html', leaderboard=leaderboard, DynamoDBTables=DynamoDBTables)
+    error_message = request.args.get('error_message')
+    return render_template('index.html', leaderboard=leaderboard, DynamoDBTables=DynamoDBTables, error_message=error_message)
 
 @app.route('/add_player', methods=['POST'])
 async def add_player():
     game_name = request.form['game_name']
     tag_line = request.form['tag_line']
-    await leaderboard_service.add_player(game_name, tag_line)
+    result = await leaderboard_service.add_player(game_name, tag_line)
+    if "does not exist" in result:
+        return redirect(url_for('index', error_message=result))
     return redirect(url_for('index'))
 
 @app.route('/remove_player', methods=['POST'])

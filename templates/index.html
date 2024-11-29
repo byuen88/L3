@@ -8,7 +8,10 @@
 </head>
 <body>
     <img src="{{ url_for('static', filename='l3_logo_teemo.png') }}" alt="l3-logo">
-    <h1>L3 Leaderboard</h1>
+    <h1>League of Legends Leaderboard</h1>
+    {% if error_message %}
+        <p class="error">{{ error_message }}</p>
+    {% endif %}
     <form action="{{ url_for('update_leaderboard') }}" method="post">
         <button type="submit" class="update-button">Update Leaderboard</button>
     </form>
