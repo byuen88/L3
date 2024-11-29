@@ -29,8 +29,8 @@ async def add_player():
 
 @app.route('/remove_player', methods=['POST'])
 def remove_player():
-    player_index = int(request.form['player_index'])
-    leaderboard_service.remove_player(player_index)
+    puuid = request.values['puuid']
+    leaderboard_service.remove_player_by_puuid(puuid)
     return redirect(url_for('index'))
 
 @app.route('/update_leaderboard', methods=['POST'])

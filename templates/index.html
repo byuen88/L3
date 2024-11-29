@@ -9,9 +9,6 @@
 <body>
     <img src="{{ url_for('static', filename='l3_logo_teemo.png') }}" alt="l3-logo">
     <h1>League of Legends Leaderboard</h1>
-    {% if error_message %}
-        <p class="error">{{ error_message }}</p>
-    {% endif %}
     <form action="{{ url_for('update_leaderboard') }}" method="post">
         <button type="submit" class="update-button">Update Leaderboard</button>
     </form>
@@ -23,6 +20,9 @@
         <input type="text" id="tag_line" name="tag_line" required>
         <button type="submit">Add Player</button>
     </form>
+    {% if error_message %}
+        <p class="error">{{ error_message }}</p>
+    {% endif %}
     <h2>Leaderboard</h2>
     {% if leaderboard %}
     <table>
@@ -52,7 +52,7 @@
                 <td>{{ player.avg_time_dead }}</td>
                 <td class="actions">
                     <form action="{{ url_for('remove_player') }}" method="post">
-                        <input type="hidden" name="player_index" value="{{ loop.index }}">
+                        <input type="hidden" name="puuid" value="{{ player.puuid }}">
                         <button type="submit">Remove</button>
                     </form>
                 </td>
