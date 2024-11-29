@@ -21,6 +21,11 @@ class LeaderboardService:
         self.cooldown = 120  # Cooldown period in seconds
         self.leaderboard_name = leaderboard_name
 
+    def is_leaderboard_empty(self):
+        self.leaderboard = self.db.get_all_players()
+        return not self.leaderboard
+
+
     def view_leaderboard(self, metric_to_sort):
         """Query database for calculated statistics and display based on specified order"""
         data = self.db.get_all_player_stats_from_dynamodb()

@@ -41,6 +41,10 @@ def get_input(prompt: str) -> str | None:
     return user_input
 
 async def handle_view_leaderboard(leaderboard_service: LeaderboardService, db: DynamoClient, leaderboard_name: str) -> None:
+    if leaderboard_service.is_leaderboard_empty():
+        print("Leaderboard is empty.")
+        return
+
     status = db.check_processing_status(leaderboard_name)
     if status is None:
         return
