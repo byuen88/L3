@@ -4,6 +4,7 @@ from db.dynamo import DynamoClient
 from services.leaderboard_service import LeaderboardService
 from db.db_constants import DynamoDBTables
 from dotenv import load_dotenv
+import re
 
 # Menu Options Constants
 MENU_OPTIONS = {
@@ -32,6 +33,28 @@ def display_metrics() -> None:
     print("\nMetrics to sort by:")
     for key, (name, _) in METRICS.items():
         print(f"{key}. {name}")
+        
+def validate_name_input(game_name: str) -> bool:
+    """
+    Validate nput for game name.
+    - Allow 'q' to cancel.
+    - Otherwise, enforce alphanumeric characters with lengths between 3 and 16 characters.
+    """
+    if game_name.lower() == 'q':
+        return True
+    pattern = re.compile(r"^[a-zA-Z0-9]{3,16}$")
+    return bool(pattern.match(game_name))
+
+def validate_tag_input(tag_line: str) -> bool:
+    """
+    Validate input for tag line.
+    - Allow 'q' to cancel.
+    - Otherwise, enforce alphanumeric characters with lengths between 3 and 5 characters.
+    """
+    if tag_line.lower() == 'q':
+        return True
+    pattern = re.compile(r"^[a-zA-Z0-9]{3,5}$")
+    return bool(pattern.match(tag_line))
 
 def get_input(prompt: str) -> str | None:
     user_input = input(prompt).strip()
@@ -69,9 +92,17 @@ async def handle_add_player(leaderboard_service: LeaderboardService) -> None:
     game_name = get_input("Enter the player's game name (or 'q' to cancel): ")
     if game_name is None:
         return
+    
+    if not validate_name_input(game_name):
+        print("Invalid input. Game name must be 3-16 characters long and can only include letters and numbers.")
+        return
 
     tag_line = get_input("Enter the player's tag line (or 'q' to cancel): ")
     if tag_line is None:
+        return
+
+    if not validate_tag_input(tag_line):
+        print("Invalid input. Tagline must be 3-5 characters long and can only include letters and numbers.")
         return
 
     try:
@@ -86,14 +117,16 @@ async def handle_remove_player(leaderboard_service: LeaderboardService) -> None:
 
     print(leaderboard_players)
 
-    index = get_input("Enter the player's number (or 'q' to cancel): ")
+    index = get_input("Enter the player's listed index number (or 'q' to cancel): ")
     if index is None:
+        return
+    
+    if not index.isdigit():
+        print("Invalid input. Please enter a number.")
         return
 
     try:
         print(leaderboard_service.remove_player(int(index)))
-    except ValueError:
-        print("Invalid input. Please enter a number.")
     except Exception as e:
         print(f"An error occurred while removing a player: {e}")
 
