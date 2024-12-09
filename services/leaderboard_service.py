@@ -25,46 +25,20 @@ class LeaderboardService:
         self.leaderboard = self.db.get_all_players()
         return not self.leaderboard
 
-
     def view_leaderboard(self, metric_to_sort):
         """Query database for calculated statistics and display based on specified order"""
         data = self.db.get_all_player_stats_from_dynamodb()
 
         if not data or len(data) == 0:
             print("No statistics to show")
-            return
+            return []
 
-        sort_idx = -1
-        if (metric_to_sort == DynamoDBTables.StatsTable.KDA):
-            sort_idx = 1
-        elif (metric_to_sort == DynamoDBTables.StatsTable.CS_PER_MIN):
-            sort_idx = 2
-        elif (metric_to_sort == DynamoDBTables.StatsTable.DAMAGE_RECORD):
-            sort_idx = 3
-        elif (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS):
-            sort_idx = 4
-        elif (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED):
-            sort_idx = 5   
-        elif (metric_to_sort == DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD):
-            sort_idx = 6   
-
-        if (sort_idx == -1):
+        sort_idx = self._get_sort_index(metric_to_sort)
+        if sort_idx == -1:
             print("Sorting on incorrect metric")
-            return
-
-        sorted_data = sorted(
-            [(
-                item["puuid"],
-                item[DynamoDBTables.StatsTable.KDA],
-                item[DynamoDBTables.StatsTable.CS_PER_MIN],
-                item[DynamoDBTables.StatsTable.DAMAGE_RECORD],
-                item[DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS],
-                item[DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED],
-                item[DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD],
-              ) for item in data],
-            key=lambda x: x[sort_idx],  # Sort by the metric value
-            reverse=True
-        )
+            return []
+        
+        sorted_data = self._sort_data(data, sort_idx)
 
         # Find the longest player name for consistent formatting
         longest_name_length = max(
@@ -78,6 +52,7 @@ class LeaderboardService:
         medium_width = 10
         short_width = 5
 
+        # ============================= Display leaderboard in CLI =============================
         # Display leaderboard header
         print(
             f"{'Player':<{longest_name_length + 4}} | "
@@ -91,6 +66,7 @@ class LeaderboardService:
         print("-" * (longest_name_length + 4 + short_width + medium_width + long_width + medium_width + medium_width + long_width + 20))
 
         # Display leaderboard rows
+        leaderboard = []
         for puuid, kda, cs, damage_record, avg_dmg, avg_gold, avg_dead in sorted_data:
             player = self.leaderboard.get(puuid)
 
@@ -117,6 +93,47 @@ class LeaderboardService:
                         f"{round(avg_dead, 0):<{long_width}} | "
                     )
                 count += 1
+                # ============================= build and return leaderabord for front-end =============================
+                leaderboard.append({
+                    "puuid": player.puuid,
+                    "game_name": player.game_name,
+                    "tag_line": player.tag_line,
+                    "kda": kda,
+                    "cs_per_min": cs,
+                    "damage_record": damage_record,
+                    "avg_damage": avg_dmg,
+                    "avg_gold": avg_gold,
+                    "avg_time_dead": avg_dead
+                })
+
+        return leaderboard
+
+    def _get_sort_index(self, metric_to_sort):
+        """Get the index to sort the data by the specified metric"""
+        sort_indices = {
+            DynamoDBTables.StatsTable.KDA: 1,
+            DynamoDBTables.StatsTable.CS_PER_MIN: 2,
+            DynamoDBTables.StatsTable.DAMAGE_RECORD: 3,
+            DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS: 4,
+            DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED: 5,
+            DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD: 6,
+        }
+        return sort_indices.get(metric_to_sort, -1)
+
+    def _sort_data(self, data, sort_idx):
+        """Sort the data based on the specified index"""
+        return sorted(
+            [(item["puuid"],
+              item[DynamoDBTables.StatsTable.KDA],
+              item[DynamoDBTables.StatsTable.CS_PER_MIN],
+              item[DynamoDBTables.StatsTable.DAMAGE_RECORD], 
+              item[DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS],
+              item[DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED],
+              item[DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD])
+             for item in data],
+            key=lambda x: x[sort_idx],  # Sort by the metric value
+            reverse=True
+        )
 
     def get_leaderboard_players(self):
         """Query the database for all players in the leaderboard."""
@@ -175,6 +192,22 @@ class LeaderboardService:
                 # Remove from cache
                 self.leaderboard.pop(player.puuid)
                 return f"Player {player.game_name}#{player.tag_line} removed from the leaderboard."
+
+        return f"No player found in the leaderboard."
+
+    def remove_player_by_puuid(self, puuid):
+        """Remove a player from the leaderboard by puuid."""
+        self.leaderboard = self.db.get_all_players()
+        if not self.leaderboard:
+            return "Leaderboard is currently empty."
+
+        player = self.leaderboard.get(puuid)
+        if player:
+            # Remove from DB
+            self.db.remove_player(player.puuid, player.game_name, player.tag_line)
+            # Remove from cache
+            self.leaderboard.pop(player.puuid)
+            return f"Player {player.game_name}#{player.tag_line} removed from the leaderboard."
 
         return f"No player found in the leaderboard."
 

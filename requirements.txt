@@ -10,3 +10,4 @@ requests==2.32.3
 s3transfer==0.10.3
 six==1.16.0
 urllib3==1.26.20
+flask[async]==3.1.0
