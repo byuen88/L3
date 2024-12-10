@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>League of Legends Leaderboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <img src="{{ url_for('static', filename='l3_logo_teemo.png') }}" alt="l3-logo">
+    <h1>League of Legends Leaderboard</h1>
+    <form action="{{ url_for('update_leaderboard') }}" method="post">
+        <button type="submit" class="update-button">Update Leaderboard</button>
+    </form>
+    <h2>Add Player</h2>
+    <form action="{{ url_for('add_player') }}" method="post">
+        <label for="game_name">Game Name:</label>
+        <input type="text" id="game_name" name="game_name" required>
+        <label for="tag_line">Tag Line:</label>
+        <input type="text" id="tag_line" name="tag_line" required>
+        <button type="submit">Add Player</button>
+    </form>
+    {% if error_message %}
+        <p class="error">{{ error_message }}</p>
+    {% endif %}
+    <h2>Leaderboard</h2>
+    {% if leaderboard %}
+    <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.KDA) }}" style="color: white;">KDA</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.CS_PER_MIN) }}" style="color: white;">CS/min</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.DAMAGE_RECORD) }}" style="color: white;">Damage Record</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.AVERAGE_DAMAGE_DEALT_TO_CHAMPIONS) }}" style="color: white;">Average Damage</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.AVERAGE_GOLD_EARNED) }}" style="color: white;">Average Gold</a></th>
+                <th><a href="{{ url_for('index', metric=DynamoDBTables.StatsTable.AVERAGE_TIME_SPENT_DEAD) }}" style="color: white;">Average Time Dead (s)</a></th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in leaderboard %}
+            <tr class="player-row">
+                <td>{{ loop.index }}</td>
+                <td>{{ player.game_name }}#{{ player.tag_line }}</td>
+                <td>{{ player.kda }}</td>
+                <td>{{ player.cs_per_min }}</td>
+                <td>{{ player.damage_record }}</td>
+                <td>{{ player.avg_damage }}</td>
+                <td>{{ player.avg_gold }}</td>
+                <td>{{ player.avg_time_dead }}</td>
+                <td class="actions">
+                    <form action="{{ url_for('remove_player') }}" method="post">
+                        <input type="hidden" name="puuid" value="{{ player.puuid }}">
+                        <button type="submit">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No players in the leaderboard.</p>
+    {% endif %}
+</body>
+</html>
