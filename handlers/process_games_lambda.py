@@ -54,7 +54,7 @@ def lambda_handler(event, context):
     calculated_stat_keys = ['csPerMin', 'damageDealtToChampionsRecord']
     all_stat_keys = participant_stat_keys + challenges_stat_keys + calculated_stat_keys
     
-    damageRecord = 0
+    # damageRecord = 0
 
     # getting all raw entries    
     for key in key_list:
@@ -69,20 +69,27 @@ def lambda_handler(event, context):
             entry = {"puuid": participant.get("puuid"), "csPerMin": csPerMin, "damageDealtToChampionsRecord": damageRecord}
             entry.update({key: participant.get(key, 0) for key in participant_stat_keys})
             entry.update({key: participant["challenges"].get(key, 0) for key in challenges_stat_keys})
-        processed_matches.append(entry)
+            processed_matches.append(entry)
     
-    # grouping entries by puuid and getting total along with # of games 
+    # Grouping entries by puuid and getting total along with # of games 
     for entry in processed_matches:
         puuid = entry['puuid']
         if puuid not in grouped_by_puuid:
             grouped_by_puuid[puuid] = {key: 0 for key in all_stat_keys}
             grouped_by_puuid[puuid]["numberOfGames"] = 0
-            
+            grouped_by_puuid[puuid]["damageDealtToChampionsRecord"] = 0  # Initialize max damage record
+
         for key in all_stat_keys:
-            grouped_by_puuid[puuid][key] += entry.get(key, 0)
+            if key != "damageDealtToChampionsRecord":
+                grouped_by_puuid[puuid][key] += entry.get(key) or 0
+
+        # Update the max damage record for the puuid
+        grouped_by_puuid[puuid]["damageDealtToChampionsRecord"] = max(
+            grouped_by_puuid[puuid]["damageDealtToChampionsRecord"], entry["damageDealtToChampionsRecord"]
+        )
 
         grouped_by_puuid[puuid]["numberOfGames"] += 1
-    
+
     # calculate averages
     for stats in grouped_by_puuid.values():
         for key in all_stat_keys:
@@ -113,9 +120,9 @@ def lambda_handler(event, context):
                 
                 # Get max damage record
                 existing_damage_record = float(existing_item['damageDealtToChampionsRecord']['N']) if 'damageDealtToChampionsRecord' in existing_item else 0
-                updated_stats['damageDealtToChampionsRecord'] = round(max(damageRecord, existing_damage_record), 2)
-                
-                updated_stats['numberOfGames'] = total_games
+                updated_stats['damageDealtToChampionsRecord'] = round(
+                    max(grouped_by_puuid[puuid]["damageDealtToChampionsRecord"], existing_damage_record), 2
+                )
 
                 # Update the item in DynamoDB
                 update_expression = "SET " + ", ".join(f"{key} = :{key}" for key in updated_stats)
